@@ -30,9 +30,10 @@ namespace Lithnet.Okta.ManagementAgent
             object syncObject = new object();
             userHighestTicks = 0;
 
-            IEnumerable<IUser> users = CSEntryImportUsers.GetUserEnumerable(inDelta, importState, client);
+            IAsyncEnumerable<IUser> users = CSEntryImportUsers.GetUserEnumerable(inDelta, importState, client);
 
-            Parallel.ForEach<IUser>(users, options, (user) =>
+            //users.ForEach(user =>
+            Parallel.ForEach<IUser>(users.ToEnumerable(), options, (user) =>
             {
                 try
                 {
@@ -43,7 +44,7 @@ namespace Lithnet.Okta.ManagementAgent
                             CSEntryImportUsers.userHighestTicks = Math.Max(CSEntryImportUsers.userHighestTicks, user.LastUpdated.Value.Ticks);
                         }
                     }
-                    
+
                     CSEntryChange c = CSEntryImportUsers.UserToCSEntryChange(inDelta, schemaType, user);
                     if (c != null)
                     {
@@ -72,7 +73,7 @@ namespace Lithnet.Okta.ManagementAgent
             string wmv = CSEntryImportUsers.userHighestTicks.ToString();
             yield return new Watermark("users", wmv, "DateTime");
         }
-        
+
         private static CSEntryChange UserToCSEntryChange(bool inDelta, SchemaType schemaType, IUser user)
         {
             Resource profile = user.GetProperty<Resource>("profile");
@@ -127,9 +128,9 @@ namespace Lithnet.Okta.ManagementAgent
             return c;
         }
 
-        private static IEnumerable<IUser> GetUserEnumerable(bool inDelta, WatermarkKeyedCollection importState, IOktaClient client)
+        private static IAsyncEnumerable<IUser> GetUserEnumerable(bool inDelta, WatermarkKeyedCollection importState, IOktaClient client)
         {
-            IEnumerable<IUser> users;
+            IAsyncEnumerable<IUser> users;
 
             if (inDelta)
             {
@@ -149,11 +150,11 @@ namespace Lithnet.Okta.ManagementAgent
 
                 string filter = $"lastUpdated gt \"{dt.ToSmartString()}Z\"";
 
-                users = client.Users.ListUsers(null, null, null, filter).ToEnumerable();
+                users = client.Users.ListUsers(null, null, 200, filter);
             }
             else
             {
-                users = client.Users.ListUsers().ToEnumerable();
+                users = client.Users.ListUsers(null, null, 200);
             }
 
             return users;

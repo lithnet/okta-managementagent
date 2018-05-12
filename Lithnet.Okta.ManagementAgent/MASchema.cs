@@ -20,22 +20,56 @@ namespace Lithnet.Okta.ManagementAgent
             SchemaType mmsType = MASchema.GetSchemaTypeUser(client);
             mmsSchema.Types.Add(mmsType);
 
+            mmsType = MASchema.GetSchemaTypeGroup(client);
+            mmsSchema.Types.Add(mmsType);
+
             return mmsSchema;
         }
+
+        private static SchemaType GetSchemaTypeGroup(Osdk.OktaClient client)
+        {
+            SchemaType mmsType = SchemaType.Create("group", true);
+            SchemaAttribute mmsAttribute = SchemaAttribute.CreateAnchorAttribute("id", AttributeType.String, AttributeOperation.ImportOnly);
+            mmsType.Attributes.Add(mmsAttribute);
+
+            mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("created", AttributeType.String, AttributeOperation.ImportOnly);
+            mmsType.Attributes.Add(mmsAttribute);
+
+            mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("lastUpdated", AttributeType.String, AttributeOperation.ImportOnly);
+            mmsType.Attributes.Add(mmsAttribute);
+
+            mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("lastMembershipUpdated", AttributeType.String, AttributeOperation.ImportOnly);
+            mmsType.Attributes.Add(mmsAttribute);
+
+            mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("type", AttributeType.String, AttributeOperation.ImportOnly);
+            mmsType.Attributes.Add(mmsAttribute);
+
+            mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("name", AttributeType.String, AttributeOperation.ImportExport);
+            mmsType.Attributes.Add(mmsAttribute);
+
+            mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("description", AttributeType.String, AttributeOperation.ImportExport);
+            mmsType.Attributes.Add(mmsAttribute);
+
+            mmsAttribute = SchemaAttribute.CreateMultiValuedAttribute("member", AttributeType.Reference, AttributeOperation.ImportExport);
+            mmsType.Attributes.Add(mmsAttribute);
+
+            return mmsType;
+        }
+
 
         private static SchemaType GetSchemaTypeUser(Osdk.OktaClient client)
         {
             SchemaType mmsType = SchemaType.Create("user", true);
             SchemaAttribute mmsAttribute = SchemaAttribute.CreateAnchorAttribute("id", AttributeType.String, AttributeOperation.ImportOnly);
             mmsType.Attributes.Add(mmsAttribute);
-            
+
             mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("status", AttributeType.String);
             mmsType.Attributes.Add(mmsAttribute);
 
             mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("created", AttributeType.String, AttributeOperation.ImportOnly);
             mmsType.Attributes.Add(mmsAttribute);
 
-            mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("activated", AttributeType.String);
+            mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("activated", AttributeType.String, AttributeOperation.ImportOnly);
             mmsType.Attributes.Add(mmsAttribute);
 
             mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("statusChanged", AttributeType.String, AttributeOperation.ImportOnly);
@@ -106,7 +140,7 @@ namespace Lithnet.Okta.ManagementAgent
                 logger.Error($"The definition for type {definitionName} was did not contain any properties");
                 yield break;
             }
-            
+
             if (!(definitionObject["properties"] is IDictionary<string, object> properties))
             {
                 logger.Info($"The properties definition for {definitionName} were missing");

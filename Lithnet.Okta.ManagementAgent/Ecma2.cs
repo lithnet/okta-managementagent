@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
+using System.Net;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
@@ -55,6 +56,8 @@ namespace Lithnet.Okta.ManagementAgent
 
         private int PageSize { get; set; }
 
+        private int batch { get; set; }
+
         public int ImportDefaultPageSize => 100;
 
         public int ImportMaxPageSize => 9999;
@@ -98,17 +101,18 @@ namespace Lithnet.Okta.ManagementAgent
             config.AddTarget("trace", traceTarget);
             traceTarget.Layout = @"${longdate}|${level:uppercase=true:padding=5}|${message}${exception:format=ToString}";
 
-            FileTarget fileTarget = new FileTarget();
-            config.AddTarget("file", fileTarget);
-
-            fileTarget.FileName = $"{configParameters[ParameterNameLogFileName].Value}/ma.log";
-            fileTarget.Layout = "${longdate}|${level:uppercase=true:padding=5}|${message}${exception:format=ToString}";
-
             LoggingRule rule1 = new LoggingRule("*", LogLevel.Trace, traceTarget);
             config.LoggingRules.Add(rule1);
 
-            LoggingRule rule2 = new LoggingRule("*", LogLevel.Debug, fileTarget);
-            config.LoggingRules.Add(rule2);
+            if (!string.IsNullOrWhiteSpace(configParameters[ParameterNameLogFileName].Value))
+            {
+                FileTarget fileTarget = new FileTarget();
+                config.AddTarget("file", fileTarget);
+                fileTarget.FileName = $"{configParameters[ParameterNameLogFileName].Value}";
+                fileTarget.Layout = "${longdate}|${level:uppercase=true:padding=5}|${message}${exception:format=ToString}";
+                LoggingRule rule2 = new LoggingRule("*", LogLevel.Debug, fileTarget);
+                config.LoggingRules.Add(rule2);
+            }
 
             LogManager.Configuration = config;
         }
@@ -253,7 +257,8 @@ namespace Lithnet.Okta.ManagementAgent
                 return results;
             }
 
-            //Logger.WriteLine("Importing page " + batch);
+            this.batch++;
+            logger.Info($"Importing page {this.batch}");
 
             while (!this.importCSEntries.IsCompleted || this.cancellationTokenSource.IsCancellationRequested)
             {
@@ -289,11 +294,12 @@ namespace Lithnet.Okta.ManagementAgent
 
             if (mayHaveMore)
             {
-                //Logger.WriteLine("Batch complete");
+                logger.Info("Batch complete");
             }
             else
             {
                 logger.Info("CSEntryChange consumption complete");
+                this.batch = 0;
             }
 
             results.MoreToImport = mayHaveMore;
@@ -406,13 +412,18 @@ namespace Lithnet.Okta.ManagementAgent
         private void OpenConnection(KeyedCollection<string, ConfigParameter> configParameters)
         {
             this.timer.Start();
-
+            this.SetHttpDebugMode();
+            
             logger.Info($"Setting up connection to {configParameters[ParameterNameTenantUrl].Value}");
             this.client = new OktaClient(
                 new OktaClientConfiguration
                 {
                     OrgUrl = configParameters[ParameterNameTenantUrl].Value,
-                    Token = configParameters[ParameterNameApiKey].SecureValue.ConvertToUnsecureString()
+                    Token = configParameters[ParameterNameApiKey].SecureValue.ConvertToUnsecureString(),
+                    Proxy = new ProxyConfiguration()
+                    {
+                        Host = "http://127.0.0.1:8888",
+                    }
                 });
 
             this.timer.Stop();
@@ -477,6 +488,15 @@ namespace Lithnet.Okta.ManagementAgent
             {
                 logger.Error(ex, "Error changing password for {csentry.DN}");
                 throw;
+            }
+        }
+
+        private void SetHttpDebugMode()
+        {
+            if (MAConfigSection.Configuration.HttpDebugEnabled)
+            {
+                ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
+                logger.Warn("WARNING: HTTPS Debugging enabled. Service certificate validation and GZIP compression are both disabled");
             }
         }
     }

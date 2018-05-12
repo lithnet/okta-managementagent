@@ -19,17 +19,37 @@ namespace Lithnet.Okta.ManagementAgent
         public static WatermarkKeyedCollection GetCSEntryChanges(bool inDelta, WatermarkKeyedCollection importState, Schema importTypes, CancellationToken cancellationToken, BlockingCollection<CSEntryChange> importItems, IOktaClient client)
         {
             WatermarkKeyedCollection outgoingState = new WatermarkKeyedCollection();
+            List<Task> taskList = new List<Task>();
 
             foreach (SchemaType type in importTypes.Types)
             {
                 if (type.Name == "user")
                 {
-                    foreach (Watermark wm in CSEntryImportUsers.GetCSEntryChanges(inDelta, importState, type, cancellationToken, importItems, client))
+                    taskList.Add(Task.Run(() =>
                     {
-                        outgoingState.Add(wm);
-                    }
+                        logger.Info("Starting CSEntryImportUsers");
+                        foreach (Watermark wm in CSEntryImportUsers.GetCSEntryChanges(inDelta, importState, type, cancellationToken, importItems, client))
+                        {
+                            outgoingState.Add(wm);
+                        }
+                    }, cancellationToken));
+                }
+
+                if (type.Name == "group")
+                {
+                    taskList.Add(Task.Run(() =>
+                    {
+                        logger.Info("Starting CSEntryImportGroup");
+
+                        foreach (Watermark wm in CSEntryImportGroups.GetCSEntryChanges(inDelta, importState, type, cancellationToken, importItems, client))
+                        {
+                            outgoingState.Add(wm);
+                        }
+                    }, cancellationToken));
                 }
             }
+
+            Task.WaitAll(taskList.ToArray(), cancellationToken);
 
             return outgoingState;
         }
