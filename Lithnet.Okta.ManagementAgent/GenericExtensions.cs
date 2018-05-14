@@ -10,6 +10,7 @@ using System.Threading.Tasks;
 using System.Xml.Serialization;
 using Newtonsoft.Json.Linq;
 using Okta.Sdk;
+using Okta.Sdk.Internal;
 
 namespace Lithnet.Okta.ManagementAgent
 {

@@ -4,17 +4,16 @@ using System.Collections.Generic;
 using System.Collections.ObjectModel;
 using System.Diagnostics;
 using System.Linq;
-using System.Net;
 using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
-using Lithnet.MetadirectoryServices;
 using Microsoft.MetadirectoryServices;
 using Okta.Sdk;
 using NLog;
 using NLog.Config;
 using NLog.Targets;
 using Okta.Sdk.Configuration;
+using Newtonsoft.Json;
 
 namespace Lithnet.Okta.ManagementAgent
 {
@@ -28,11 +27,15 @@ namespace Lithnet.Okta.ManagementAgent
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        private const string ParameterNameLogFileName = "Log file";
+        internal const string ParameterNameLogFileName = "Log file";
 
-        private const string ParameterNameApiKey = "API key";
+        internal const string ParameterNameApiKey = "API key";
 
-        private const string ParameterNameTenantUrl = "Tenant URL";
+        internal const string ParameterNameTenantUrl = "Tenant URL";
+
+        internal const string ParameterNameIncludeBuiltInGroups = "Include built-in groups";
+
+        internal const string ParameterNameIncludeAppGroups = "Include app groups";
 
         private OktaClient client;
 
@@ -110,7 +113,7 @@ namespace Lithnet.Okta.ManagementAgent
                 config.AddTarget("file", fileTarget);
                 fileTarget.FileName = $"{configParameters[ParameterNameLogFileName].Value}";
                 fileTarget.Layout = "${longdate}|${level:uppercase=true:padding=5}|${message}${exception:format=ToString}";
-                LoggingRule rule2 = new LoggingRule("*", LogLevel.Debug, fileTarget);
+                LoggingRule rule2 = new LoggingRule("*", LogLevel.Trace, fileTarget);
                 config.LoggingRules.Add(rule2);
             }
 
@@ -134,13 +137,21 @@ namespace Lithnet.Okta.ManagementAgent
 
                 if (!string.IsNullOrEmpty(importRunStep.CustomData))
                 {
-                    this.importState = importRunStep.CustomData.XmlDeserializeFromString<WatermarkKeyedCollection>();
+                    try
+                    {
+                        this.importState = JsonConvert.DeserializeObject<WatermarkKeyedCollection>(importRunStep.CustomData);
+                        //this.importState = importRunStep.CustomData.XmlDeserializeFromString<WatermarkKeyedCollection>();
+                    }
+                    catch (Exception ex)
+                    {
+                        logger.Error(ex, "Could not deserialize watermark");
+                    }
                 }
 
                 this.PageSize = importRunStep.PageSize;
                 this.timer.Restart();
 
-                this.StartCreatingCSEntryChanges();
+                this.StartCreatingCSEntryChanges(configParameters);
             }
             catch (Exception ex)
             {
@@ -153,7 +164,7 @@ namespace Lithnet.Okta.ManagementAgent
 
         public GetImportEntriesResults GetImportEntries(GetImportEntriesRunStep importRunStep)
         {
-            return this.GetImportEntriesFromProducer();
+            return this.ConsumeImportEntriesFromProducer();
         }
 
         public CloseImportConnectionResults CloseImportConnection(CloseImportConnectionRunStep importRunStep)
@@ -193,7 +204,7 @@ namespace Lithnet.Okta.ManagementAgent
 
             if (this.importState != null && this.importState.Any())
             {
-                string wm = this.importState.XmlSerializeToString();
+                string wm = JsonConvert.SerializeObject(this.importState);  //this.importState.XmlSerializeToString();
                 logger.Trace($"Watermark: {wm}");
                 return new CloseImportConnectionResults(wm);
             }
@@ -203,7 +214,7 @@ namespace Lithnet.Okta.ManagementAgent
             }
         }
 
-        private void StartCreatingCSEntryChanges()
+        private void StartCreatingCSEntryChanges(KeyedCollection<string, ConfigParameter> configParameters)
         {
             if (this.importCSEntries == null)
             {
@@ -217,7 +228,7 @@ namespace Lithnet.Okta.ManagementAgent
             {
                 try
                 {
-                    this.importState = CSEntryImport.GetCSEntryChanges(this.inDelta, this.importState, this.importTypes, this.cancellationTokenSource.Token, this.importCSEntries, this.client);
+                    this.importState = CSEntryImport.GetCSEntryChanges(this.inDelta, configParameters, this.importState, this.importTypes, this.cancellationTokenSource.Token, this.importCSEntries, this.client);
                 }
                 catch (OperationCanceledException)
                 {
@@ -245,7 +256,7 @@ namespace Lithnet.Okta.ManagementAgent
         }
 
 
-        private GetImportEntriesResults GetImportEntriesFromProducer()
+        private GetImportEntriesResults ConsumeImportEntriesFromProducer()
         {
             int count = 0;
             bool mayHaveMore = false;
@@ -258,18 +269,18 @@ namespace Lithnet.Okta.ManagementAgent
             }
 
             this.batch++;
-            logger.Info($"Importing page {this.batch}");
+            logger.Info($"Producing page {this.batch}");
 
             while (!this.importCSEntries.IsCompleted || this.cancellationTokenSource.IsCancellationRequested)
             {
                 count++;
-                this.currentRow++;
                 CSEntryChange csentry = null;
 
                 try
                 {
                     // May be able to change this to Take(this.PageSize);
                     csentry = this.importCSEntries.Take();
+                    this.currentRow++;
                 }
                 catch (InvalidOperationException)
                 {
@@ -294,7 +305,7 @@ namespace Lithnet.Okta.ManagementAgent
 
             if (mayHaveMore)
             {
-                logger.Info("Batch complete");
+                logger.Info("Page complete");
             }
             else
             {
@@ -331,6 +342,8 @@ namespace Lithnet.Okta.ManagementAgent
                     break;
 
                 case ConfigParameterPage.Global:
+                    configParametersDefinitions.Add(ConfigParameterDefinition.CreateCheckBoxParameter(Ecma2.ParameterNameIncludeBuiltInGroups, false));
+                    configParametersDefinitions.Add(ConfigParameterDefinition.CreateCheckBoxParameter(Ecma2.ParameterNameIncludeAppGroups, false));
                     break;
 
                 case ConfigParameterPage.Partition:
@@ -360,6 +373,8 @@ namespace Lithnet.Okta.ManagementAgent
                 logger.Info("Starting export");
 
                 this.OpenConnection(configParameters);
+                this.timer = new Stopwatch();
+                this.timer.Start();
             }
             catch (Exception ex)
             {
@@ -372,8 +387,12 @@ namespace Lithnet.Okta.ManagementAgent
         {
             PutExportEntriesResults results = new PutExportEntriesResults();
 
-            foreach (CSEntryChange csentry in csentries)
+            ParallelOptions po = new ParallelOptions { MaxDegreeOfParallelism = MAConfigSection.Configuration.ExportThreads };
+
+            Parallel.ForEach(csentries, po, (csentry) =>
             {
+
+                Interlocked.Increment(ref this.currentRow);
                 logger.Info("Performing export for " + csentry.DN);
                 try
                 {
@@ -385,7 +404,7 @@ namespace Lithnet.Okta.ManagementAgent
                     logger.Error(ex.GetExceptionContent());
                     results.CSEntryChangeResults.Add(CSEntryChangeResult.Create(csentry.Identifier, null, MAExportError.ExportErrorCustomContinueRun, ex.GetExceptionMessage(), ex.GetExceptionContent()));
                 }
-            }
+            });
 
             return results;
         }
@@ -412,20 +431,32 @@ namespace Lithnet.Okta.ManagementAgent
         private void OpenConnection(KeyedCollection<string, ConfigParameter> configParameters)
         {
             this.timer.Start();
-            this.SetHttpDebugMode();
-            
-            logger.Info($"Setting up connection to {configParameters[ParameterNameTenantUrl].Value}");
-            this.client = new OktaClient(
-                new OktaClientConfiguration
-                {
-                    OrgUrl = configParameters[ParameterNameTenantUrl].Value,
-                    Token = configParameters[ParameterNameApiKey].SecureValue.ConvertToUnsecureString(),
-                    Proxy = new ProxyConfiguration()
-                    {
-                        Host = "http://127.0.0.1:8888",
-                    }
-                });
 
+            ProxyConfiguration proxyConfig = null;
+
+            if (MAConfigSection.Configuration.ProxyUrl != null)
+            {
+                proxyConfig = new ProxyConfiguration() { Host = MAConfigSection.Configuration.ProxyUrl };
+            }
+
+            logger.Info($"Setting up connection to {configParameters[ParameterNameTenantUrl].Value}");
+
+            OktaClientConfiguration oktaConfig = new OktaClientConfiguration
+            {
+                OrgUrl = configParameters[ParameterNameTenantUrl].Value,
+                Token = configParameters[ParameterNameApiKey].SecureValue.ConvertToUnsecureString(),
+                Proxy = proxyConfig,
+            };
+
+            if (MAConfigSection.Configuration.HttpDebugEnabled)
+            {
+                logger.Warn("WARNING: HTTPS Debugging enabled. Service certificate validation is disabled");
+                oktaConfig.DisableServerCertificateValidation = true;
+            }
+
+            NLog.Extensions.Logging.NLogLoggerProvider f = new NLog.Extensions.Logging.NLogLoggerProvider();
+            var nlogger = f.CreateLogger("ext-logger");
+            this.client = new OktaClient(oktaConfig, nlogger);
             this.timer.Stop();
 
             logger.Info("Opened connection: {0}", this.timer.Elapsed.ToString());
@@ -463,11 +494,12 @@ namespace Lithnet.Okta.ManagementAgent
                     }
                 };
 
-                this.client.Users.UpdateUserAsync(u, csentry.DN.ToString());
+                this.client.Users.UpdateUserAsync(u, csentry.DN.ToString()).Wait();
             }
             catch (Exception ex)
             {
-                logger.Error(ex, "Error setting password for {csentry.DN}");
+                logger.Error($"Error setting password for {csentry.DN}");
+                logger.Error(ex.GetExceptionContent());
                 throw;
             }
         }
@@ -482,21 +514,13 @@ namespace Lithnet.Okta.ManagementAgent
                     {
                         NewPassword = newPassword.ConvertToUnsecureString(),
                         CurrentPassword = oldPassword.ConvertToUnsecureString()
-                    });
+                    }).Wait();
             }
             catch (Exception ex)
             {
-                logger.Error(ex, "Error changing password for {csentry.DN}");
+                logger.Error($"Error changing password for {csentry.DN}");
+                logger.Error(ex.GetExceptionContent());
                 throw;
-            }
-        }
-
-        private void SetHttpDebugMode()
-        {
-            if (MAConfigSection.Configuration.HttpDebugEnabled)
-            {
-                ServicePointManager.ServerCertificateValidationCallback = delegate { return true; };
-                logger.Warn("WARNING: HTTPS Debugging enabled. Service certificate validation and GZIP compression are both disabled");
             }
         }
     }

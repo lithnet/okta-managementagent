@@ -1,19 +1,15 @@
 ﻿using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
 using Lithnet.MetadirectoryServices;
 using Microsoft.MetadirectoryServices;
-using Microsoft.MetadirectoryServices.DetachedObjectModel;
 using NLog;
 using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    public class CSEntryExportUsers
+    public static class CSEntryExportUsers
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
@@ -72,8 +68,15 @@ namespace Lithnet.Okta.ManagementAgent
                 }
                 else
                 {
-                    profile[change.Name] = change.GetValueAdd<string>();
-                    logger.Info($"Set {change.Name} to {profile[change.Name] ?? "<null>"}");
+                    if (change.IsMultiValued)
+                    {
+                        profile[change.Name] = change.GetValueAdds<object>();
+                    }
+                    else
+                    {
+                        profile[change.Name] = change.GetValueAdd<object>();
+                        logger.Info($"Set {change.Name} to {profile[change.Name] ?? "<null>"}");
+                    }
                 }
             }
 

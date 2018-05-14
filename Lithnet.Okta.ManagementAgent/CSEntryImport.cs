@@ -1,22 +1,19 @@
-﻿using System;
-using System.Collections.Concurrent;
+﻿using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.Diagnostics;
-using System.Linq;
+using System.Collections.ObjectModel;
 using System.Threading;
 using System.Threading.Tasks;
-using Lithnet.MetadirectoryServices;
 using Microsoft.MetadirectoryServices;
 using NLog;
 using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    public class CSEntryImport
+    public static class CSEntryImport
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static WatermarkKeyedCollection GetCSEntryChanges(bool inDelta, WatermarkKeyedCollection importState, Schema importTypes, CancellationToken cancellationToken, BlockingCollection<CSEntryChange> importItems, IOktaClient client)
+        public static WatermarkKeyedCollection GetCSEntryChanges(bool inDelta, KeyedCollection<string, ConfigParameter> configParameters, WatermarkKeyedCollection importState, Schema importTypes, CancellationToken cancellationToken, BlockingCollection<CSEntryChange> importItems, IOktaClient client)
         {
             WatermarkKeyedCollection outgoingState = new WatermarkKeyedCollection();
             List<Task> taskList = new List<Task>();
@@ -41,7 +38,7 @@ namespace Lithnet.Okta.ManagementAgent
                     {
                         logger.Info("Starting CSEntryImportGroup");
 
-                        foreach (Watermark wm in CSEntryImportGroups.GetCSEntryChanges(inDelta, importState, type, cancellationToken, importItems, client))
+                        foreach (Watermark wm in CSEntryImportGroups.GetCSEntryChanges(inDelta, configParameters, importState, type, cancellationToken, importItems, client))
                         {
                             outgoingState.Add(wm);
                         }

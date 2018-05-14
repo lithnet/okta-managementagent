@@ -6,6 +6,7 @@ namespace Lithnet.Okta.ManagementAgent
     {
         private const string SectionName = "lithnet-okta-ma";
         private const string PropHttpDebugEnabled = "http-debug-enabled";
+        private const string PropProxyUrl = "proxy-url";
         private const string PropExportThreads = "export-threads";
 
         internal static MAConfigSection GetConfiguration()
@@ -29,6 +30,9 @@ namespace Lithnet.Okta.ManagementAgent
 
         [ConfigurationProperty(MAConfigSection.PropHttpDebugEnabled, IsRequired = false, DefaultValue = false)]
         public bool HttpDebugEnabled => (bool)this[MAConfigSection.PropHttpDebugEnabled];
+
+        [ConfigurationProperty(MAConfigSection.PropProxyUrl, IsRequired = false, DefaultValue = null)]
+        public string ProxyUrl => (string)this[MAConfigSection.PropProxyUrl];
 
         [ConfigurationProperty(MAConfigSection.PropExportThreads, IsRequired = false, DefaultValue = 30)]
         public int ExportThreads => (int)this[MAConfigSection.PropExportThreads];

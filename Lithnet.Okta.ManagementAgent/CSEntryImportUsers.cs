@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Diagnostics;
@@ -12,7 +13,7 @@ using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    public class CSEntryImportUsers
+    public static class CSEntryImportUsers
     {
         private static long userHighestTicks = 0;
 
@@ -65,12 +66,17 @@ namespace Lithnet.Okta.ManagementAgent
                 options.CancellationToken.ThrowIfCancellationRequested();
             });
 
+            string wmv;
+
             if (CSEntryImportUsers.userHighestTicks <= 0)
             {
-                yield break;
+                wmv = importState["users"].Value;
+            }
+            else
+            {
+                wmv = CSEntryImportUsers.userHighestTicks.ToString();
             }
 
-            string wmv = CSEntryImportUsers.userHighestTicks.ToString();
             yield return new Watermark("users", wmv, "DateTime");
         }
 
@@ -108,19 +114,25 @@ namespace Lithnet.Okta.ManagementAgent
                         continue;
                     }
 
-                    object value = user.GetProperty<object>(type.Name);
+                    object value = user.GetProperty<object>(type.Name) ?? profile.GetProperty<object>(type.Name);
 
                     if (value != null)
                     {
-                        c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, TypeConverter.ConvertData(value, type.DataType)));
-                        continue;
-                    }
+                        if (value is IList list)
+                        {
+                            IList<object> values = new List<object>();
 
-                    value = profile.GetProperty<object>(type.Name);
-                    if (value != null)
-                    {
-                        c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, TypeConverter.ConvertData(value, type.DataType)));
-                        continue;
+                            foreach (var item in list)
+                            {
+                                values.Add(TypeConverter.ConvertData(item, type.DataType));
+                            }
+
+                            c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, values));
+                        }
+                        else
+                        {
+                            c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, TypeConverter.ConvertData(value, type.DataType)));
+                        }
                     }
                 }
             }

@@ -1,12 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
 using Microsoft.MetadirectoryServices;
 using NLog;
 using Osdk = Okta.Sdk;
-using Newtonsoft.Json;
 
 namespace Lithnet.Okta.ManagementAgent
 {
@@ -149,18 +145,24 @@ namespace Lithnet.Okta.ManagementAgent
 
             foreach (KeyValuePair<string, object> property in properties)
             {
-                //logger.Info($"Got property {property.Key}");
                 string name = property.Key;
                 IDictionary<string, object> values = property.Value as IDictionary<string, object>;
 
                 AttributeOperation operation = MASchema.GetAttributeOperationFromMutability(values["mutability"].ToString());
 
-                AttributeType type = MASchema.GetTypeFromType(values["type"].ToString());
+                bool ismultivalued = MASchema.IsMultivalued(values);
+                AttributeType type = MASchema.GetTypeForAttribute(values, ismultivalued);
 
-                //logger.Info($"Property definition for {property.Key}/{type}/{operation}");
-                if (values["type"].ToString() == "array")
+                if (name == "managerId")
                 {
-                    yield return SchemaAttribute.CreateMultiValuedAttribute(name, AttributeType.String, operation);
+                    type = AttributeType.Reference;
+                }
+
+                logger.Info($"Got attribute {name} of type {type} and is mv {ismultivalued}");
+
+                if (ismultivalued)
+                {
+                    yield return SchemaAttribute.CreateMultiValuedAttribute(name, type, operation);
                 }
                 else
                 {
@@ -169,9 +171,41 @@ namespace Lithnet.Okta.ManagementAgent
             }
         }
 
-        private static AttributeType GetTypeFromType(string value)
+        private static bool IsMultivalued(IDictionary<string, object> values)
         {
-            switch (value.ToLowerInvariant())
+            return string.Equals(values["type"].ToString(), "array", StringComparison.InvariantCultureIgnoreCase);
+        }
+
+        private static AttributeType GetTypeForAttribute(IDictionary<string, object> values, bool isMultivalued)
+        {
+            if (isMultivalued)
+            {
+                return GetTypeForMultivaluedAttribute(values);
+            }
+            else
+            {
+                return GetTypeForSingleValuedAttribute(values);
+            }
+        }
+
+        private static AttributeType GetTypeForSingleValuedAttribute(IDictionary<string, object> values)
+        {
+            return GetAttributeType(values["type"].ToString().ToLowerInvariant());
+        }
+
+        private static AttributeType GetTypeForMultivaluedAttribute(IDictionary<string, object> values)
+        {
+            if (!(values["items"] is IDictionary<string, object> items))
+            {
+                throw new ArgumentException("Unknown multivalued data type");
+            }
+
+            return GetAttributeType(items["type"].ToString().ToLowerInvariant());
+        }
+
+        private static AttributeType GetAttributeType(string typeName)
+        {
+            switch (typeName)
             {
                 case "boolean":
                     return AttributeType.Boolean;

@@ -1,20 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿using System.Text;
 using System.Collections.ObjectModel;
-using System.Runtime.Serialization;
-using System.Xml.Serialization;
+using Newtonsoft.Json;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    [XmlType("Watermarks")]
+    [JsonArray("watermarks")]
     public class WatermarkKeyedCollection : KeyedCollection<string, Watermark>
     {
         protected override string GetKeyForItem(Watermark item)
         {
-            return item.TableID;
+            return item.ID;
         }
 
         public override string ToString()

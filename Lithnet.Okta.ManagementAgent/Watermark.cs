@@ -1,32 +1,27 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
+using Newtonsoft.Json;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    [XmlType("Watermark")]
+    [JsonObject("watermark")]
     public class Watermark
     {
-        [XmlElement]
-        public string TableID { get; set; }
+        [JsonProperty("id")]
+        public string ID { get; set; }
 
-        [XmlElement]
+        [JsonProperty("value")]
         public string Value { get; set; }
 
-        [XmlElement]
+        [JsonProperty("type")]
         public string Type { get; set; }
 
         public Watermark()
         {
-
         }
 
         public Watermark(string tableID, string value, string type)
         {
-            this.TableID = tableID;
+            this.ID = tableID;
             this.Value = value;
             this.Type = type;
         }
@@ -38,16 +33,16 @@ namespace Lithnet.Okta.ManagementAgent
                 try
                 {
                     long ticks = long.Parse(this.Value);
-                    return $"{this.TableID}:{new DateTime(ticks):s}";
+                    return $"{this.ID}:{new DateTime(ticks):s}";
                 }
                 catch
                 {
-                    return $"{this.TableID}:unknown";
+                    return $"{this.ID}:unknown";
                 }
             }
             else
             {
-                return $"{this.TableID}:{this.Value}";
+                return $"{this.ID}:{this.Value}";
             }
         }
     }
