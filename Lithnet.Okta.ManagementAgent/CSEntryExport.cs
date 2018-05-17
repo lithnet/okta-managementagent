@@ -1,23 +1,36 @@
-﻿using System.Threading;
+﻿using System.Collections.ObjectModel;
+using System.Diagnostics;
+using System.Threading;
 using Microsoft.MetadirectoryServices;
 using NLog;
 using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    public class CSEntryExport
+    public static class CSEntryExport
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        internal static CSEntryChangeResult PutCSEntryChange(CSEntryChange csentry, IOktaClient client, CancellationToken token)
+        internal static CSEntryChangeResult PutCSEntryChange(CSEntryChange csentry, IOktaClient client, KeyedCollection<string, ConfigParameter> configParameters, CancellationToken token)
         {
-            if (csentry.ObjectType == "user")
+            Stopwatch timer = new Stopwatch();
+
+            try
             {
-                return CSEntryExportUsers.PutCSEntryChange(csentry, client, token);
+                timer.Start();
+                if (csentry.ObjectType == "user")
+                {
+                    return CSEntryExportUsers.PutCSEntryChange(csentry, client, configParameters, token);
+                }
+                else
+                {
+                    throw new NoSuchObjectTypeException();
+                }
             }
-            else
+            finally
             {
-                throw new NoSuchObjectTypeException();
+                timer?.Stop();
+                logger.Trace($"Export of {csentry.DN} took {timer.Elapsed}");
             }
         }
     }

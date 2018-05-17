@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Collections.ObjectModel;
 using System.Linq;
 using System.Threading;
 using Lithnet.MetadirectoryServices;
@@ -13,13 +14,13 @@ namespace Lithnet.Okta.ManagementAgent
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        internal static CSEntryChangeResult PutCSEntryChange(CSEntryChange csentry, IOktaClient client, CancellationToken token)
+        internal static CSEntryChangeResult PutCSEntryChange(CSEntryChange csentry, IOktaClient client, KeyedCollection<string, ConfigParameter> configParameters, CancellationToken token)
         {
 
-            return CSEntryExportUsers.PutCSEntryChangeObject(csentry, client, token);
+            return CSEntryExportUsers.PutCSEntryChangeObject(csentry, client, configParameters, token);
         }
 
-        public static CSEntryChangeResult PutCSEntryChangeObject(CSEntryChange csentry, IOktaClient client, CancellationToken token)
+        public static CSEntryChangeResult PutCSEntryChangeObject(CSEntryChange csentry, IOktaClient client, KeyedCollection<string, ConfigParameter> configParameters, CancellationToken token)
         {
             switch (csentry.ObjectModificationType)
             {
@@ -27,7 +28,7 @@ namespace Lithnet.Okta.ManagementAgent
                     return CSEntryExportUsers.PutCSEntryChangeAdd(csentry, client, token);
 
                 case ObjectModificationType.Delete:
-                    return CSEntryExportUsers.PutCSEntryChangeDelete(csentry, client, token);
+                    return CSEntryExportUsers.PutCSEntryChangeDelete(csentry, client, configParameters, token);
 
                 case ObjectModificationType.Update:
                     return CSEntryExportUsers.PutCSEntryChangeUpdate(csentry, client, token);
@@ -40,9 +41,15 @@ namespace Lithnet.Okta.ManagementAgent
             }
         }
 
-        private static CSEntryChangeResult PutCSEntryChangeDelete(CSEntryChange csentry, IOktaClient client, CancellationToken token)
+        private static CSEntryChangeResult PutCSEntryChangeDelete(CSEntryChange csentry, IOktaClient client, KeyedCollection<string, ConfigParameter> configParameters, CancellationToken token)
         {
-            client.Users.DeactivateOrDeleteUserAsync(csentry.DN, token);
+            client.Users.DeactivateUserAsync(csentry.DN, token).Wait(token);
+
+            if (configParameters[Ecma2.ParameterNameUserDeprovisioningAction].Value == "Delete")
+            {
+                client.Users.DeactivateOrDeleteUserAsync(csentry.DN, token).Wait(token);
+            }
+
             return CSEntryChangeResult.Create(csentry.Identifier, null, MAExportError.Success);
         }
 
@@ -52,6 +59,7 @@ namespace Lithnet.Okta.ManagementAgent
             provider.Type = AuthenticationProviderType.Okta;
 
             UserProfile profile = new UserProfile();
+            bool suspend = false;
 
             foreach (AttributeChange change in csentry.AttributeChanges)
             {
@@ -65,6 +73,10 @@ namespace Lithnet.Okta.ManagementAgent
                 {
                     provider.Name = change.GetValueAdd<string>();
                     logger.Info($"Set {change.Name} to {provider.Name ?? "<null>"}");
+                }
+                else if (change.Name == "suspended")
+                {
+                    suspend = change.GetValueAdd<bool>();
                 }
                 else
                 {
@@ -80,10 +92,6 @@ namespace Lithnet.Okta.ManagementAgent
                 }
             }
 
-            //User u = new User();
-            //u.Profile = profile;
-            //u.Credentials.Provider = provider;
-
             CreateUserWithProviderOptions options = new CreateUserWithProviderOptions()
             {
                 Profile = profile,
@@ -93,7 +101,11 @@ namespace Lithnet.Okta.ManagementAgent
             };
 
             IUser result = client.Users.CreateUserAsync(options, token).Result;
-            //IUser result = client.Users.CreateUserAsync(user, false, false, token).Result;
+
+            if (suspend)
+            {
+                result.SuspendAsync(token).Wait(token);
+            }
 
             List<AttributeChange> anchorChanges = new List<AttributeChange>();
             anchorChanges.Add(AttributeChange.CreateAttributeAdd("id", result.Id));
@@ -107,8 +119,54 @@ namespace Lithnet.Okta.ManagementAgent
 
             foreach (AttributeChange change in csentry.AttributeChanges)
             {
-                user.Profile[change.Name] = change.ValueChanges.FirstOrDefault(t => t.ModificationType == ValueModificationType.Add)?.Value;
-                logger.Info($"Set {change.Name} to {user.Profile[change.Name] ?? "<null>"}");
+                if (change.Name == "suspended")
+                {
+                    bool suspend;
+
+                    if (change.ModificationType == AttributeModificationType.Delete)
+                    {
+                        suspend = false;
+                    }
+                    else
+                    {
+                        suspend = change.GetValueAdd<bool>();
+                    }
+
+                    if (user.Status == UserStatus.Active && suspend)
+                    {
+                        logger.Info($"Suspending user {user.Id}");
+                        user.SuspendAsync(token).Wait(token);
+                    }
+                    else if (user.Status == UserStatus.Suspended && !suspend)
+                    {
+                        user.UnsuspendAsync(token).Wait(token);
+                        logger.Info($"Unsuspending user {user.Id}");
+                    }
+                }
+                else
+                {
+
+                    if (change.IsMultiValued)
+                    {
+                        IList<object> adds = change.GetValueAdds<object>();
+                        IList<object> deletes = change.GetValueDeletes<object>();
+                        IList<object> existingItems =  user.Profile[change.Name] as IList<object> ?? new List<object>();
+                        List<object> newList = new List<object>();
+
+                        newList.AddRange(existingItems.Except(deletes));
+                        newList.AddRange(adds);
+
+                        user.Profile[change.Name] = newList;
+                    }
+                    else
+                    {
+                        user.Profile[change.Name] = change.GetValueAdd<object>();
+                        logger.Info($"Set {change.Name} to {user.Profile[change.Name] ?? "<null>"}");
+                    }
+
+                    user.Profile[change.Name] = change.ValueChanges.FirstOrDefault(t => t.ModificationType == ValueModificationType.Add)?.Value;
+                    logger.Info($"Set {change.Name} to {user.Profile[change.Name] ?? "<null>"}");
+                }
             }
 
             IUser result = client.Users.UpdateUserAsync(user, csentry.DN, token).Result;

@@ -64,67 +64,17 @@ namespace Lithnet.Okta.ManagementAgent
             return result;
         }
 
-        public static string GetExceptionMessage(this Exception ex)
+        public static Exception UnwrapIfSingleAggregateException(this Exception ex)
         {
             if (ex is AggregateException aex)
             {
                 if (aex.InnerExceptions.Count == 1)
                 {
-                    return aex.InnerException.GetExceptionMessage();
+                    return aex.InnerException;
                 }
-
-                return aex.Message;
             }
 
-            return ex.Message;
-        }
-
-        public static string GetExceptionContent(this Exception ex)
-        {
-            if (ex is AggregateException aex)
-            {
-                if (aex.InnerExceptions.Count == 1)
-                {
-                    return aex.InnerException.GetExceptionContent();
-                }
-
-                return aex.ToString();
-            }
-
-            if (ex is OktaApiException oex)
-            {
-                StringBuilder sb = new StringBuilder();
-                sb.AppendLine($"{oex.ErrorCode}: {oex.ErrorSummary}");
-                sb.AppendLine($"{string.Join("\r\n",oex.GetErrorCauses())}");
-                sb.AppendLine(oex.ToString());
-
-                return sb.ToString();
-            }
-
-            return ex.ToString();
-        }
-
-        public static IEnumerable<string> GetErrorCauses(this OktaApiException ex)
-        {
-            var internalResource = typeof(OktaApiException).GetField("_resource", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(ex) as IResource;
-
-            if (!(internalResource?.GetData()["errorCauses"] is IList<object> causes))
-            {
-                yield break;
-            }
-
-            foreach (JObject o in causes.OfType<JObject>())
-            {
-                yield return o.Value<string>("errorSummary");
-            }
+            return ex;
         }
     }
 }
-
-/*
- * {"errorCode":"E0000001",
- * "errorSummary":"Api validation failed: login",
- * "errorLink":"E0000001",
- * "errorId":"oaeBPlwzzB_QNGk7KjLslUO2Q",
- * "errorCauses":[{"errorSummary":"login: An object with this field already exists in the current organization"}]}
- */

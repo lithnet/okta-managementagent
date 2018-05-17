@@ -113,6 +113,11 @@ namespace Lithnet.Okta.ManagementAgent
                         c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, TypeConverter.ConvertData(user.Credentials.Provider.Type.Value, type.DataType)));
                         continue;
                     }
+                    else if (type.Name == "suspended")
+                    {
+                        c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, user.Status == UserStatus.Suspended));
+                        continue;
+                    }
 
                     object value = user.GetProperty<object>(type.Name) ?? profile.GetProperty<object>(type.Name);
 
