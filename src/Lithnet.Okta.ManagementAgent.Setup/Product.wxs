@@ -1,0 +1,97 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Wix xmlns="http://schemas.microsoft.com/wix/2006/wi" xmlns:netfx="http://schemas.microsoft.com/wix/NetFxExtension">
+  <Product Id="*"
+           Name="Lithnet Okta Management Agent"
+           Language="1033"
+           Version="!(bind.FileVersion.fil00DF6F04758542738C2175B66901A072)"
+           Manufacturer="Lithnet"
+           UpgradeCode="1DFC1BE6CEDC49328048F9013CD35C67" >
+
+    <Package  InstallerVersion="200"
+              Compressed="yes"
+              InstallScope="perMachine"
+              InstallPrivileges="elevated"
+              Manufacturer="Lithnet" Platform="x64" />
+    <Media Id="1" Cabinet="Cab1.cab" EmbedCab="yes" />
+    <MajorUpgrade Schedule="afterInstallExecute" DowngradeErrorMessage="A later version of [ProductName] is already installed"  AllowSameVersionUpgrades="yes"/>
+
+    <!-- Prerequisites -->
+
+    <PropertyRef Id="WIX_IS_NETFRAMEWORK_45_OR_LATER_INSTALLED" />
+
+    <Condition Message="This application requires .NET Framework 4.5. Please install the .NET Framework then run this installer again">
+      <![CDATA[Installed OR WIX_IS_NETFRAMEWORK_45_OR_LATER_INSTALLED]]>
+    </Condition>
+
+    <Property Id="FIMINSTALLDIR" Secure="yes">
+      <RegistrySearch Id="FimInstallDirFromRegistry" Root="HKLM" Key="SYSTEM\CurrentControlSet\services\FIMSynchronizationService\Parameters" Name="Path" Type="directory" />
+    </Property>
+
+    <Property Id="SYNCVERSION" Secure="yes">
+      <DirectorySearch Id="MiiserverVersion" Path="[FIMINSTALLDIR]">
+        <DirectorySearch Id="binFolder" AssignToProperty="no" Path="bin">
+          <FileSearch Name="miiserver.exe" MinVersion="4.1.3441.0" />
+        </DirectorySearch>
+      </DirectorySearch>
+    </Property>
+
+    <Condition Message="This application requires Microsoft Forefront Identity Manager 2010 R2 4.1.3441 or later to be installed">
+      <![CDATA[Installed OR SYNCVERSION]]>
+    </Condition>
+
+    <UI>
+      <UIRef Id="WixUI_Common" />
+      <Property Id="WixUI_Mode" Value="Custom" />
+
+      <TextStyle Id="WixUI_Font_Normal" FaceName="Tahoma" Size="8" />
+      <TextStyle Id="WixUI_Font_Bigger" FaceName="Tahoma" Size="9" Bold="yes" />
+      <TextStyle Id="WixUI_Font_Title"  FaceName="Tahoma" Size="9" Bold="yes" />
+
+      <Property Id="DefaultUIFont" Value="WixUI_Font_Normal" />
+      <DialogRef Id="ProgressDlg" />
+      <DialogRef Id="ErrorDlg" />
+      <DialogRef Id="FilesInUse" />
+      <DialogRef Id="FatalError" />
+      <DialogRef Id="UserExit" />
+
+      <Publish Dialog="ExitDialog" Control="Finish" Event="EndDialog" Value="Return" Order="999">1</Publish>
+      <Publish Dialog="WelcomeDlg" Control="Next" Event="EndDialog" Value="Return" Order="2"></Publish>
+
+    </UI>
+    <!-- Installation Paths -->
+
+    <Directory Id="TARGETDIR" Name="SourceDir">
+      <Directory Id="FIMINSTALLDIR" ComponentGuidGenerationSeed="29D0C880346C4F0FB03235C0D9C974C2">
+        <Directory Id="FIMEXTENSIONS" Name="Extensions" />
+        <Directory Id="FIMUISHELL" Name="UIShell">
+          <Directory Id="FIMXMLS" Name="XMLs">
+            <Directory Id="PACKAGEDMAS" Name="PackagedMAs" />
+          </Directory>
+        </Directory>
+      </Directory>
+    </Directory>
+
+    <!-- Features -->
+
+    <Feature Id="Ecma" Title="Lithnet Okta MA" Level="1">
+      <ComponentGroupRef Id="ManagementAgent" />
+      <ComponentGroupRef Id="PackagedMA" />
+    </Feature>
+
+    <ComponentGroup Id="ManagementAgent" Directory="FIMEXTENSIONS">
+      <Component Id="cmp51D72417E8A94A6A89C425416AF3BD95" Guid="*">
+        <File Id="fil00DF6F04758542738C2175B66901A072" KeyPath="yes" Source="$(var.Lithnet.Okta.ManagementAgent.TargetDir)Lithnet.Okta.ManagementAgent.dll" />
+      </Component>
+      <Component Id="cmp826692528BAC454BB5ACD19BD8101F7D" Guid="*">
+        <File Id="fil3329CA56C4974C70A12CD6934604CED2" KeyPath="yes" Source="$(var.Lithnet.Okta.ManagementAgent.TargetDir)Lithnet.Okta.ManagementAgent.pdb" />
+      </Component>
+    </ComponentGroup>
+
+    <ComponentGroup Id="PackagedMA" Directory="PACKAGEDMAS">
+      <Component Id="cmp53B5E90EE7C5483B9496BE70297D5A6B" Guid="*">
+        <RemoveFile Id ="rmv53D352309285423FA9D2FDE13A118B93" Name="Lithnet.Okta.ManagementAgent.PackagedMA.xml" On="install"/>
+        <File Id="fil7EF5540FDD3145138FD0D0FC84E86BD1" KeyPath="yes"  Source="$(var.Lithnet.Okta.ManagementAgent.ProjectDir)Lithnet.Okta.ManagementAgent.PackagedMA.xml" />
+      </Component>
+    </ComponentGroup>
+  </Product>
+</Wix>

@@ -245,6 +245,34 @@
             <dsml:name>manager</dsml:name>
             <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
           </dsml:attribute-type>
+          <dsml:attribute-type id="id" single-value="true" ms-dsml:immutable="true">
+            <dsml:name>id</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="lastMembershipUpdated" single-value="true" ms-dsml:immutable="true">
+            <dsml:name>lastMembershipUpdated</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="type" single-value="true" ms-dsml:immutable="true">
+            <dsml:name>type</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="name" single-value="true">
+            <dsml:name>name</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="description" single-value="true">
+            <dsml:name>description</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="member" single-value="false">
+            <dsml:name>member</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.12</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="export_password" single-value="true" ms-dsml:encrypted="true" ms-dsml:export-only="true">
+            <dsml:name>export_password</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
         </dsml:directory-schema>
       </dsml:dsml>
     </schema>
@@ -576,7 +604,7 @@
   </ma-data>
 
   <mv-data>
-    <import-attribute-flow/>
+    <import-attribute-flow />
   </mv-data>
 
 </export-ma>
