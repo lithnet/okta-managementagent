@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using Lithnet.Ecma2Framework;
 using Microsoft.MetadirectoryServices;
 using NLog;
 using Okta.Sdk;
@@ -7,24 +8,19 @@ using HttpRequest = Okta.Sdk.Internal.HttpRequest;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    internal static class MASchema
+    internal class SchemaProvider : ISchemaProvider
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static object GetConnectionContext(MAConfigParameters configParameters)
-        {
-            return OktaConnectionContext.GetConnectionContext(configParameters);
-        }
-
-        public static Schema GetMmsSchema(SchemaContext context)
+        public Schema GetMmsSchema(SchemaContext context)
         {
             IOktaClient client = ((OktaConnectionContext)context.ConnectionContext).Client;
 
             Schema mmsSchema = new Schema();
-            SchemaType mmsType = MASchema.GetSchemaTypeUser(client);
+            SchemaType mmsType = SchemaProvider.GetSchemaTypeUser(client);
             mmsSchema.Types.Add(mmsType);
 
-            mmsType = MASchema.GetSchemaTypeGroup(client);
+            mmsType = SchemaProvider.GetSchemaTypeGroup(client);
             mmsSchema.Types.Add(mmsType);
 
             return mmsSchema;
@@ -59,8 +55,7 @@ namespace Lithnet.Okta.ManagementAgent
 
             return mmsType;
         }
-
-
+        
         private static SchemaType GetSchemaTypeUser(IOktaClient client)
         {
             SchemaType mmsType = SchemaType.Create("user", true);
@@ -97,7 +92,7 @@ namespace Lithnet.Okta.ManagementAgent
             mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("suspended", AttributeType.Boolean, AttributeOperation.ImportExport);
             mmsType.Attributes.Add(mmsAttribute);
             
-            foreach (SchemaAttribute a in MASchema.GetSchemaJson(client))
+            foreach (SchemaAttribute a in SchemaProvider.GetSchemaJson(client))
             {
                 mmsType.Attributes.Add(a);
             }
@@ -116,12 +111,12 @@ namespace Lithnet.Okta.ManagementAgent
 
             IDictionary<string, object> definitions = result["definitions"] as IDictionary<string, object>;
 
-            foreach (SchemaAttribute schemaAttribute in MASchema.GetAttributesFromDefinition(definitions, "base"))
+            foreach (SchemaAttribute schemaAttribute in SchemaProvider.GetAttributesFromDefinition(definitions, "base"))
             {
                 yield return schemaAttribute;
             }
 
-            foreach (SchemaAttribute schemaAttribute in MASchema.GetAttributesFromDefinition(definitions, "custom"))
+            foreach (SchemaAttribute schemaAttribute in SchemaProvider.GetAttributesFromDefinition(definitions, "custom"))
             {
                 yield return schemaAttribute;
             }
@@ -163,10 +158,10 @@ namespace Lithnet.Okta.ManagementAgent
                     continue;
                 }
 
-                AttributeOperation operation = MASchema.GetAttributeOperationFromMutability(values["mutability"].ToString());
+                AttributeOperation operation = SchemaProvider.GetAttributeOperationFromMutability(values["mutability"].ToString());
 
-                bool ismultivalued = MASchema.IsMultivalued(values);
-                AttributeType type = MASchema.GetTypeForAttribute(values, ismultivalued);
+                bool ismultivalued = SchemaProvider.IsMultivalued(values);
+                AttributeType type = SchemaProvider.GetTypeForAttribute(values, ismultivalued);
 
                 if (name == "managerId")
                 {

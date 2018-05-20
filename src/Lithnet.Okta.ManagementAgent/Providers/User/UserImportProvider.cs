@@ -4,6 +4,7 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using Lithnet.Ecma2Framework;
 using Lithnet.MetadirectoryServices;
 using Microsoft.MetadirectoryServices;
 using NLog;
@@ -11,13 +12,11 @@ using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    internal static class CSEntryImportUsers
+    internal  class UserImportProvider : IObjectImportProvider
     {
-        private static long userHighestTicks = 0;
-
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        internal static void GetCSEntryChanges(SchemaType schemaType, ImportContext context)
+        public void GetCSEntryChanges(ImportContext context, SchemaType type)
         {
             ParallelOptions options = new ParallelOptions { CancellationToken = context.CancellationTokenSource.Token };
 
@@ -27,9 +26,9 @@ namespace Lithnet.Okta.ManagementAgent
             }
 
             object syncObject = new object();
-            userHighestTicks = 0;
+            long userHighestTicks = 0;
 
-            IAsyncEnumerable<IUser> users = CSEntryImportUsers.GetUserEnumerable(context.InDelta, context.IncomingWatermark, ((OktaConnectionContext)context.ConnectionContext).Client);
+            IAsyncEnumerable<IUser> users = this.GetUserEnumerable(context.InDelta, context.IncomingWatermark, ((OktaConnectionContext)context.ConnectionContext).Client);
 
             Parallel.ForEach<IUser>(users.ToEnumerable(), options, (user) =>
             {
@@ -39,11 +38,11 @@ namespace Lithnet.Okta.ManagementAgent
                     {
                         lock (syncObject)
                         {
-                            CSEntryImportUsers.userHighestTicks = Math.Max(CSEntryImportUsers.userHighestTicks, user.LastUpdated.Value.Ticks);
+                            userHighestTicks = Math.Max(userHighestTicks, user.LastUpdated.Value.Ticks);
                         }
                     }
 
-                    CSEntryChange c = CSEntryImportUsers.UserToCSEntryChange(context.InDelta, schemaType, user);
+                    CSEntryChange c = this.UserToCSEntryChange(context.InDelta, type, user);
                     if (c != null)
                     {
                         context.ImportItems.Add(c, context.CancellationTokenSource.Token);
@@ -65,25 +64,25 @@ namespace Lithnet.Okta.ManagementAgent
 
             string wmv;
 
-            if (CSEntryImportUsers.userHighestTicks <= 0)
+            if (userHighestTicks <= 0)
             {
                 wmv = context.IncomingWatermark["users"].Value;
             }
             else
             {
-                wmv = CSEntryImportUsers.userHighestTicks.ToString();
+                wmv = userHighestTicks.ToString();
             }
 
             context.OutgoingWatermark.Add(new Watermark("users", wmv, "DateTime"));
         }
 
-        private static CSEntryChange UserToCSEntryChange(bool inDelta, SchemaType schemaType, IUser user)
+        private CSEntryChange UserToCSEntryChange(bool inDelta, SchemaType schemaType, IUser user)
         {
             Resource profile = user.GetProperty<Resource>("profile");
             string login = profile.GetProperty<string>("login");
             logger.Trace($"Creating CSEntryChange for {user.Id}/{login}");
 
-            ObjectModificationType modType = CSEntryImportUsers.GetObjectModificationType(user, inDelta);
+            ObjectModificationType modType = this.GetObjectModificationType(user, inDelta);
 
             if (modType == ObjectModificationType.None)
             {
@@ -142,7 +141,7 @@ namespace Lithnet.Okta.ManagementAgent
             return c;
         }
 
-        private static IAsyncEnumerable<IUser> GetUserEnumerable(bool inDelta, WatermarkKeyedCollection importState, IOktaClient client)
+        private IAsyncEnumerable<IUser> GetUserEnumerable(bool inDelta, WatermarkKeyedCollection importState, IOktaClient client)
         {
             IAsyncEnumerable<IUser> users;
 
@@ -174,7 +173,7 @@ namespace Lithnet.Okta.ManagementAgent
             return users;
         }
 
-        private static ObjectModificationType GetObjectModificationType(IUser user, bool inDelta)
+        private ObjectModificationType GetObjectModificationType(IUser user, bool inDelta)
         {
             if (!inDelta)
             {
@@ -198,6 +197,11 @@ namespace Lithnet.Okta.ManagementAgent
             }
 
             return ObjectModificationType.Replace;
+        }
+
+        public bool CanImport(SchemaType type)
+        {
+            return type.Name == "user";
         }
     }
 }

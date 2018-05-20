@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using Lithnet.Ecma2Framework;
 using Lithnet.MetadirectoryServices;
 using Microsoft.MetadirectoryServices;
 using NLog;
@@ -8,28 +9,32 @@ using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    internal static class CSEntryExportUsers
+    internal class UserExportProvider : IObjectExportProvider
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        internal static CSEntryChangeResult PutCSEntryChange(CSEntryChange csentry, ExportContext context)
+        public bool CanExport(CSEntryChange csentry)
         {
-
-            return CSEntryExportUsers.PutCSEntryChangeObject(csentry, context);
+            return csentry.ObjectType == "user";
         }
 
-        public static CSEntryChangeResult PutCSEntryChangeObject(CSEntryChange csentry, ExportContext context)
+        public CSEntryChangeResult PutCSEntryChange(CSEntryChange csentry, ExportContext context)
+        {
+            return this.PutCSEntryChangeObject(csentry, context);
+        }
+
+        public CSEntryChangeResult PutCSEntryChangeObject(CSEntryChange csentry, ExportContext context)
         {
             switch (csentry.ObjectModificationType)
             {
                 case ObjectModificationType.Add:
-                    return CSEntryExportUsers.PutCSEntryChangeAdd(csentry, context);
+                    return this.PutCSEntryChangeAdd(csentry, context);
 
                 case ObjectModificationType.Delete:
-                    return CSEntryExportUsers.PutCSEntryChangeDelete(csentry, context);
+                    return this.PutCSEntryChangeDelete(csentry, context);
 
                 case ObjectModificationType.Update:
-                    return CSEntryExportUsers.PutCSEntryChangeUpdate(csentry, context);
+                    return this.PutCSEntryChangeUpdate(csentry, context);
 
                 default:
                 case ObjectModificationType.None:
@@ -39,13 +44,13 @@ namespace Lithnet.Okta.ManagementAgent
             }
         }
 
-        private static CSEntryChangeResult PutCSEntryChangeDelete(CSEntryChange csentry, ExportContext context)
+        private CSEntryChangeResult PutCSEntryChangeDelete(CSEntryChange csentry, ExportContext context)
         {
-            IOktaClient client = ((OktaConnectionContext) context.ConnectionContext).Client;
+            IOktaClient client = ((OktaConnectionContext)context.ConnectionContext).Client;
 
             client.Users.DeactivateUserAsync(csentry.DN, context.CancellationTokenSource.Token).Wait(context.CancellationTokenSource.Token);
 
-            if (context.ConfigParameters.DeprovisioningAction == "Delete")
+            if (context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value == "Delete")
             {
                 client.Users.DeactivateOrDeleteUserAsync(csentry.DN, context.CancellationTokenSource.Token).Wait(context.CancellationTokenSource.Token);
             }
@@ -53,7 +58,7 @@ namespace Lithnet.Okta.ManagementAgent
             return CSEntryChangeResult.Create(csentry.Identifier, null, MAExportError.Success);
         }
 
-        private static CSEntryChangeResult PutCSEntryChangeAdd(CSEntryChange csentry, ExportContext context)
+        private CSEntryChangeResult PutCSEntryChangeAdd(CSEntryChange csentry, ExportContext context)
         {
             AuthenticationProvider provider = new AuthenticationProvider();
             provider.Type = AuthenticationProviderType.Okta;
@@ -115,7 +120,7 @@ namespace Lithnet.Okta.ManagementAgent
             return CSEntryChangeResult.Create(csentry.Identifier, anchorChanges, MAExportError.Success);
         }
 
-        private static CSEntryChangeResult PutCSEntryChangeUpdate(CSEntryChange csentry, ExportContext context)
+        private CSEntryChangeResult PutCSEntryChangeUpdate(CSEntryChange csentry, ExportContext context)
         {
             IOktaClient client = ((OktaConnectionContext)context.ConnectionContext).Client;
 
@@ -154,7 +159,7 @@ namespace Lithnet.Okta.ManagementAgent
                     {
                         IList<object> adds = change.GetValueAdds<object>();
                         IList<object> deletes = change.GetValueDeletes<object>();
-                        IList<object> existingItems =  user.Profile[change.Name] as IList<object> ?? new List<object>();
+                        IList<object> existingItems = user.Profile[change.Name] as IList<object> ?? new List<object>();
                         List<object> newList = new List<object>();
 
                         newList.AddRange(existingItems.Except(deletes));
