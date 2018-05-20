@@ -2,16 +2,24 @@
 using System.Collections.Generic;
 using Microsoft.MetadirectoryServices;
 using NLog;
-using Osdk = Okta.Sdk;
+using Okta.Sdk;
+using HttpRequest = Okta.Sdk.Internal.HttpRequest;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    public static class MASchema
+    internal static class MASchema
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static Schema GetMmsSchema(Osdk.OktaClient client)
+        public static IConnectionContext GetConnectionContext(MAConfigParameters configParameters)
         {
+            return OktaConnectionContext.GetConnectionContext(configParameters);
+        }
+
+        public static Schema GetMmsSchema(IConnectionContext connectionContext)
+        {
+            IOktaClient client = ((OktaConnectionContext)connectionContext).Client;
+
             Schema mmsSchema = new Schema();
             SchemaType mmsType = MASchema.GetSchemaTypeUser(client);
             mmsSchema.Types.Add(mmsType);
@@ -22,7 +30,7 @@ namespace Lithnet.Okta.ManagementAgent
             return mmsSchema;
         }
 
-        private static SchemaType GetSchemaTypeGroup(Osdk.OktaClient client)
+        private static SchemaType GetSchemaTypeGroup(IOktaClient client)
         {
             SchemaType mmsType = SchemaType.Create("group", true);
             SchemaAttribute mmsAttribute = SchemaAttribute.CreateAnchorAttribute("id", AttributeType.String, AttributeOperation.ImportOnly);
@@ -53,7 +61,7 @@ namespace Lithnet.Okta.ManagementAgent
         }
 
 
-        private static SchemaType GetSchemaTypeUser(Osdk.OktaClient client)
+        private static SchemaType GetSchemaTypeUser(IOktaClient client)
         {
             SchemaType mmsType = SchemaType.Create("user", true);
             SchemaAttribute mmsAttribute = SchemaAttribute.CreateAnchorAttribute("id", AttributeType.String, AttributeOperation.ImportOnly);
@@ -97,10 +105,10 @@ namespace Lithnet.Okta.ManagementAgent
             return mmsType;
         }
 
-        public static IEnumerable<SchemaAttribute> GetSchemaJson(Osdk.OktaClient client)
+        public static IEnumerable<SchemaAttribute> GetSchemaJson(IOktaClient client)
         {
-            Osdk.Resource result = client.GetAsync<Osdk.Resource>(
-                new Osdk.Internal.HttpRequest
+            Resource result = client.GetAsync<Resource>(
+                new HttpRequest
                 {
                     Uri = "/api/v1/meta/schemas/user/default",
                 }).Result;
@@ -148,7 +156,12 @@ namespace Lithnet.Okta.ManagementAgent
             foreach (KeyValuePair<string, object> property in properties)
             {
                 string name = property.Key;
-                IDictionary<string, object> values = property.Value as IDictionary<string, object>;
+
+                if (!(property.Value is IDictionary<string, object> values))
+                {
+                    logger.Warn($"Missing value set for property {name}");
+                    continue;
+                }
 
                 AttributeOperation operation = MASchema.GetAttributeOperationFromMutability(values["mutability"].ToString());
 

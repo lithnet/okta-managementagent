@@ -13,7 +13,7 @@ using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    public static class CSEntryImportUsers
+    internal static class CSEntryImportUsers
     {
         private static long userHighestTicks = 0;
 

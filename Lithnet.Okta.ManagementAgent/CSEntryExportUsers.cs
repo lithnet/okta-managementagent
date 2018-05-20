@@ -10,17 +10,17 @@ using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    public static class CSEntryExportUsers
+    internal static class CSEntryExportUsers
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        internal static CSEntryChangeResult PutCSEntryChange(CSEntryChange csentry, IOktaClient client, KeyedCollection<string, ConfigParameter> configParameters, CancellationToken token)
+        internal static CSEntryChangeResult PutCSEntryChange(CSEntryChange csentry, IOktaClient client, MAConfigParameters configParameters, CancellationToken token)
         {
 
             return CSEntryExportUsers.PutCSEntryChangeObject(csentry, client, configParameters, token);
         }
 
-        public static CSEntryChangeResult PutCSEntryChangeObject(CSEntryChange csentry, IOktaClient client, KeyedCollection<string, ConfigParameter> configParameters, CancellationToken token)
+        public static CSEntryChangeResult PutCSEntryChangeObject(CSEntryChange csentry, IOktaClient client, MAConfigParameters configParameters, CancellationToken token)
         {
             switch (csentry.ObjectModificationType)
             {
@@ -41,11 +41,11 @@ namespace Lithnet.Okta.ManagementAgent
             }
         }
 
-        private static CSEntryChangeResult PutCSEntryChangeDelete(CSEntryChange csentry, IOktaClient client, KeyedCollection<string, ConfigParameter> configParameters, CancellationToken token)
+        private static CSEntryChangeResult PutCSEntryChangeDelete(CSEntryChange csentry, IOktaClient client, MAConfigParameters configParameters, CancellationToken token)
         {
             client.Users.DeactivateUserAsync(csentry.DN, token).Wait(token);
 
-            if (configParameters[Ecma2.ParameterNameUserDeprovisioningAction].Value == "Delete")
+            if (configParameters.DeprovisioningAction == "Delete")
             {
                 client.Users.DeactivateOrDeleteUserAsync(csentry.DN, token).Wait(token);
             }

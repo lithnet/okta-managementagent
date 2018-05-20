@@ -13,7 +13,7 @@ using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    public static class CSEntryImportGroups
+    internal static class CSEntryImportGroups
     {
         private static long groupHighestTicks = 0;
 
@@ -21,7 +21,7 @@ namespace Lithnet.Okta.ManagementAgent
 
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        internal static IEnumerable<Watermark> GetCSEntryChanges(bool inDelta, KeyedCollection<string, ConfigParameter> configParameters, WatermarkKeyedCollection importState, SchemaType schemaType, CancellationToken cancellationToken, BlockingCollection<CSEntryChange> importItems, IOktaClient client)
+        internal static IEnumerable<Watermark> GetCSEntryChanges(bool inDelta, MAConfigParameters configParameters, WatermarkKeyedCollection importState, SchemaType schemaType, CancellationToken cancellationToken, BlockingCollection<CSEntryChange> importItems, IOktaClient client)
         {
             ParallelOptions options = new ParallelOptions { CancellationToken = cancellationToken };
 
@@ -182,18 +182,18 @@ namespace Lithnet.Okta.ManagementAgent
             return dt;
         }
 
-        private static IAsyncEnumerable<IGroup> GetGroupEnumerable(bool inDelta, KeyedCollection<string, ConfigParameter> configParameters, WatermarkKeyedCollection importState, IOktaClient client)
+        private static IAsyncEnumerable<IGroup> GetGroupEnumerable(bool inDelta, MAConfigParameters configParameters, WatermarkKeyedCollection importState, IOktaClient client)
         {
             IAsyncEnumerable<IGroup> groups;
 
             List<string> filterConditions = new List<string>();
 
-            if (configParameters[Ecma2.ParameterNameIncludeBuiltInGroups].Value == "1")
+            if (configParameters.IncludeBuiltInGroups)
             {
                 filterConditions.Add("(type eq \"BUILT_IN\")");
             }
 
-            if (configParameters[Ecma2.ParameterNameIncludeAppGroups].Value == "1")
+            if (configParameters.IncludeAppGroups)
             {
                 filterConditions.Add("(type eq \"APP_GROUP\")");
             }

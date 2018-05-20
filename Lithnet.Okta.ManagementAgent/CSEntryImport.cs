@@ -9,14 +9,16 @@ using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    public static class CSEntryImport
+    internal static class CSEntryImport
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static WatermarkKeyedCollection GetCSEntryChanges(bool inDelta, KeyedCollection<string, ConfigParameter> configParameters, WatermarkKeyedCollection importState, Schema importTypes, CancellationToken cancellationToken, BlockingCollection<CSEntryChange> importItems, IOktaClient client)
+        public static WatermarkKeyedCollection GetCSEntryChanges(bool inDelta, MAConfigParameters configParameters, WatermarkKeyedCollection importState, Schema importTypes, CancellationToken cancellationToken, BlockingCollection<CSEntryChange> importItems, IConnectionContext connectionContext)
         {
             WatermarkKeyedCollection outgoingState = new WatermarkKeyedCollection();
             List<Task> taskList = new List<Task>();
+
+            IOktaClient client = ((OktaConnectionContext) connectionContext).Client;
 
             foreach (SchemaType type in importTypes.Types)
             {
@@ -49,6 +51,11 @@ namespace Lithnet.Okta.ManagementAgent
             Task.WaitAll(taskList.ToArray(), cancellationToken);
 
             return outgoingState;
+        }
+
+        public static IConnectionContext GetConnectionContext(MAConfigParameters configParameters)
+        {
+            return OktaConnectionContext.GetConnectionContext(configParameters);
         }
     }
 }

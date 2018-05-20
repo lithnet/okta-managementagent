@@ -8,6 +8,7 @@ namespace Lithnet.Okta.ManagementAgent
         private const string PropHttpDebugEnabled = "http-debug-enabled";
         private const string PropProxyUrl = "proxy-url";
         private const string PropExportThreads = "export-threads";
+        private const string PropHttpClientTimeout = "http-client-timeout";
 
         internal static MAConfigSection GetConfiguration()
         {
@@ -36,5 +37,8 @@ namespace Lithnet.Okta.ManagementAgent
 
         [ConfigurationProperty(MAConfigSection.PropExportThreads, IsRequired = false, DefaultValue = 30)]
         public int ExportThreads => (int)this[MAConfigSection.PropExportThreads];
+
+        [ConfigurationProperty(MAConfigSection.PropHttpClientTimeout, IsRequired = false, DefaultValue = 600)]
+        public int HttpClientTimeout => (int)this[MAConfigSection.PropHttpClientTimeout];
     }
 }
