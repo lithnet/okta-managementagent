@@ -1,0 +1,8 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ma-customization-info>
+  <ma-internal-version>1</ma-internal-version>
+  <ma-companyname>Lithnet</ma-companyname>
+  <ma-subtype>ecma2-framework</ma-subtype>
+  <ma-listname>Okta</ma-listname>
+  <ma-help-text>Lithnet Okta Management Agent</ma-help-text>
+</ma-customization-info>

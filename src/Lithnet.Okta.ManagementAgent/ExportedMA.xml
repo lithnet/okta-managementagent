@@ -1,0 +1,582 @@
+<export-ma server='IDM-D1SS1-V02' export-date='2018-05-20 10:13:30.068'>
+  <!--WARNING>
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+!!
+!! The contents of this file should not be edited.
+!! Any such modifications to this file may result in errors during import.
+!!
+!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+</WARNING-->
+  <ma-data>
+    <format-version>1</format-version>
+    <id>{B965F673-D98D-4A77-9708-3CD4F63AB4C8}</id>
+    <name>Okta_PackagedMA</name>
+    <category>Extensible2</category>
+    <subtype/>
+    <ma-listname/>
+    <ma-companyname/>
+    <creation-time>2018-05-20 10:12:31.007</creation-time>
+    <last-modification-time>2018-05-20 10:12:31.007</last-modification-time>
+    <version>1</version>
+    <internal-version>0</internal-version>
+    <password-sync-allowed>0</password-sync-allowed>
+    <schema>
+      <dsml:dsml xmlns:ms-dsml="http://www.microsoft.com/MMS/DSML" xmlns:dsml="http://www.dsml.org/DSML">
+        <dsml:directory-schema ms-dsml:no-objectclass-validation="true">
+          <dsml:class id="user" type="structural" ms-dsml:locked="1">
+            <dsml:name>user</dsml:name>
+            <dsml:attribute ref="#status" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#created" required="false" ms-dsml:isAnchor="false" ms-dsml:allowedOperation="ImportOnly" />
+            <dsml:attribute ref="#activated" required="false" ms-dsml:isAnchor="false" ms-dsml:allowedOperation="ImportOnly" />
+            <dsml:attribute ref="#statusChanged" required="false" ms-dsml:isAnchor="false" ms-dsml:allowedOperation="ImportOnly" />
+            <dsml:attribute ref="#lastLogin" required="false" ms-dsml:isAnchor="false" ms-dsml:allowedOperation="ImportOnly" />
+            <dsml:attribute ref="#lastUpdated" required="false" ms-dsml:isAnchor="false" ms-dsml:allowedOperation="ImportOnly" />
+            <dsml:attribute ref="#passwordChanged" required="false" ms-dsml:isAnchor="false" ms-dsml:allowedOperation="ImportOnly" />
+            <dsml:attribute ref="#provider.type" required="false" ms-dsml:isAnchor="false" ms-dsml:allowedOperation="ImportOnly" />
+            <dsml:attribute ref="#provider.name" required="false" ms-dsml:isAnchor="false" ms-dsml:allowedOperation="ImportOnly" />
+            <dsml:attribute ref="#suspended" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#login" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#firstName" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#lastName" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#middleName" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#honorificPrefix" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#honorificSuffix" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#email" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#title" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#displayName" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#nickName" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#profileUrl" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#secondEmail" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#mobilePhone" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#primaryPhone" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#streetAddress" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#city" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#state" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#zipCode" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#countryCode" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#postalAddress" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#preferredLanguage" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#locale" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#timezone" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#userType" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#employeeNumber" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#costCenter" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#organization" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#division" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#department" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#managerId" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#manager" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#id" required="true" ms-dsml:isAnchor="true" ms-dsml:allowedOperation="ImportOnly" />
+            <dsml:attribute ref="#export_password" required="false" />
+          </dsml:class>
+          <dsml:class id="group" type="structural" ms-dsml:locked="1">
+            <dsml:name>group</dsml:name>
+            <dsml:attribute ref="#created" required="false" ms-dsml:isAnchor="false" ms-dsml:allowedOperation="ImportOnly" />
+            <dsml:attribute ref="#lastUpdated" required="false" ms-dsml:isAnchor="false" ms-dsml:allowedOperation="ImportOnly" />
+            <dsml:attribute ref="#lastMembershipUpdated" required="false" ms-dsml:isAnchor="false" ms-dsml:allowedOperation="ImportOnly" />
+            <dsml:attribute ref="#type" required="false" ms-dsml:isAnchor="false" ms-dsml:allowedOperation="ImportOnly" />
+            <dsml:attribute ref="#name" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#description" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#member" required="false" ms-dsml:isAnchor="false" />
+            <dsml:attribute ref="#id" required="true" ms-dsml:isAnchor="true" ms-dsml:allowedOperation="ImportOnly" />
+            <dsml:attribute ref="#export_password" required="false" />
+          </dsml:class>
+          <dsml:attribute-type id="status" single-value="true">
+            <dsml:name>status</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="created" single-value="true" ms-dsml:immutable="true">
+            <dsml:name>created</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="activated" single-value="true" ms-dsml:immutable="true">
+            <dsml:name>activated</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="statusChanged" single-value="true" ms-dsml:immutable="true">
+            <dsml:name>statusChanged</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="lastLogin" single-value="true" ms-dsml:immutable="true">
+            <dsml:name>lastLogin</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="lastUpdated" single-value="true" ms-dsml:immutable="true">
+            <dsml:name>lastUpdated</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="passwordChanged" single-value="true" ms-dsml:immutable="true">
+            <dsml:name>passwordChanged</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="provider.type" single-value="true" ms-dsml:immutable="true">
+            <dsml:name>provider.type</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="provider.name" single-value="true" ms-dsml:immutable="true">
+            <dsml:name>provider.name</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="suspended" single-value="true">
+            <dsml:name>suspended</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.7</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="login" single-value="true">
+            <dsml:name>login</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="firstName" single-value="true">
+            <dsml:name>firstName</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="lastName" single-value="true">
+            <dsml:name>lastName</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="middleName" single-value="true">
+            <dsml:name>middleName</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="honorificPrefix" single-value="true">
+            <dsml:name>honorificPrefix</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="honorificSuffix" single-value="true">
+            <dsml:name>honorificSuffix</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="email" single-value="true">
+            <dsml:name>email</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="title" single-value="true">
+            <dsml:name>title</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="displayName" single-value="true">
+            <dsml:name>displayName</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="nickName" single-value="true">
+            <dsml:name>nickName</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="profileUrl" single-value="true">
+            <dsml:name>profileUrl</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="secondEmail" single-value="true">
+            <dsml:name>secondEmail</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="mobilePhone" single-value="true">
+            <dsml:name>mobilePhone</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="primaryPhone" single-value="true">
+            <dsml:name>primaryPhone</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="streetAddress" single-value="true">
+            <dsml:name>streetAddress</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="city" single-value="true">
+            <dsml:name>city</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="state" single-value="true">
+            <dsml:name>state</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="zipCode" single-value="true">
+            <dsml:name>zipCode</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="countryCode" single-value="true">
+            <dsml:name>countryCode</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="postalAddress" single-value="true">
+            <dsml:name>postalAddress</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="preferredLanguage" single-value="true">
+            <dsml:name>preferredLanguage</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="locale" single-value="true">
+            <dsml:name>locale</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="timezone" single-value="true">
+            <dsml:name>timezone</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="userType" single-value="true">
+            <dsml:name>userType</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="employeeNumber" single-value="true">
+            <dsml:name>employeeNumber</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="costCenter" single-value="true">
+            <dsml:name>costCenter</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="organization" single-value="true">
+            <dsml:name>organization</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="division" single-value="true">
+            <dsml:name>division</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="department" single-value="true">
+            <dsml:name>department</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="managerId" single-value="true">
+            <dsml:name>managerId</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.12</dsml:syntax>
+          </dsml:attribute-type>
+          <dsml:attribute-type id="manager" single-value="true">
+            <dsml:name>manager</dsml:name>
+            <dsml:syntax>1.3.6.1.4.1.1466.115.121.1.15</dsml:syntax>
+          </dsml:attribute-type>
+        </dsml:directory-schema>
+      </dsml:dsml>
+    </schema>
+    <attribute-inclusion>
+      <attribute>id</attribute>
+      <attribute>export_password</attribute>
+    </attribute-inclusion>
+    <stay-disconnector />
+    <join />
+    <projection />
+    <export-attribute-flow />
+    <provisioning-cleanup type="declared">
+      <action>make-normal-disconnector</action>
+    </provisioning-cleanup>
+    <extension />
+    <controller-configuration>
+      <application-protection>low</application-protection>
+      <application-architecture>process</application-architecture>
+    </controller-configuration>
+
+    <description></description>
+    <ma-ui-settings>
+      <account-joiner-queries>
+        <attributes>
+          <cs>
+            <attribute name="id" header="id" size="100" />
+            <attribute name="export_password" header="export_password" size="100" />
+          </cs>
+          <mv></mv>
+        </attributes>
+        <filters max_mv_search_results=""></filters>
+      </account-joiner-queries>
+    </ma-ui-settings>
+    <private-configuration>
+      <MAConfig>
+        <ui-data>
+          <xmlwizard>
+            <properties>
+              <sample_file></sample_file>
+              <code_page_description></code_page_description>
+            </properties>
+            <partitions>
+              <partition cd_name="default" guid="{E687196B-1CF3-46C7-ABFD-5B6CBEA1B8C5}" selected="-1" version="0">
+                <object_class>group</object_class>
+                <object_class>user</object_class>
+              </partition>
+            </partitions>
+            <primary_class_mappings>
+              <mapping object_class="group" primary_class="group" user_define="0">
+                <attribute>id</attribute>
+                <attribute>export_password</attribute>
+              </mapping>
+              <mapping object_class="user" primary_class="user" user_define="0">
+                <attribute>id</attribute>
+                <attribute>export_password</attribute>
+              </mapping>
+            </primary_class_mappings>
+            <object_classes>
+              <object_class cd_name="group" selected="-1" user_define="0" configured="-1" anchor="" dn_as_anchor="0">
+                <attribute mandatory="-1">id</attribute>
+                <attribute mandatory="0">export_password</attribute>
+              </object_class>
+              <object_class cd_name="user" selected="-1" user_define="0" configured="-1" anchor="" dn_as_anchor="0">
+                <attribute mandatory="-1">id</attribute>
+                <attribute mandatory="0">export_password</attribute>
+              </object_class>
+            </object_classes>
+            <attributes>
+              <attribute cd_name="id" sample_data="" binary="0" multi_valued="0" file_reference="0" selected="-1" lower_bound="" upper_bound="" type="String" user_define="0" />
+              <attribute cd_name="export_password" sample_data="" binary="0" multi_valued="0" file_reference="0" selected="-1" lower_bound="" upper_bound="" type="String" user_define="0" />
+            </attributes>
+          </xmlwizard>
+        </ui-data>
+        <importing>
+          <anchor>
+            <attribute object_class="group">id</attribute>
+            <attribute object_class="user">id</attribute>
+          </anchor>
+          <per-class-settings>
+            <class>
+              <name>group</name>
+              <anchor>
+                <attribute>id</attribute>
+              </anchor>
+            </class>
+            <class>
+              <name>user</name>
+              <anchor>
+                <attribute>id</attribute>
+              </anchor>
+            </class>
+          </per-class-settings>
+          <default_object_class>person</default_object_class>
+        </importing>
+        <exporting></exporting>
+        <ldap-dn>0</ldap-dn>
+        <change_type_attribute></change_type_attribute>
+        <add_change_type_value>Add</add_change_type_value>
+        <modify_change_type_value>Modify</modify_change_type_value>
+        <delete_change_type_value>Delete</delete_change_type_value>
+        <primary_class_mappings>
+          <mapping>
+            <primary_class>group</primary_class>
+            <oc-value>group</oc-value>
+          </mapping>
+          <mapping>
+            <primary_class>user</primary_class>
+            <oc-value>user</oc-value>
+          </mapping>
+        </primary_class_mappings>
+        <enable-unapplied-merge>0</enable-unapplied-merge>
+        <file-type>Extensible2</file-type>
+        <extension-config>
+          <filename>Lithnet.Okta.ManagementAgent.dll</filename>
+          <import-default-page-size>100</import-default-page-size>
+          <import-max-page-size>9999</import-max-page-size>
+          <export-default-page-size>100</export-default-page-size>
+          <export-max-page-size>9999</export-max-page-size>
+          <export-mode>call-based</export-mode>
+          <import-mode>call-based</import-mode>
+          <export-enabled>1</export-enabled>
+          <import-enabled>1</import-enabled>
+          <discovery-partition></discovery-partition>
+          <discovery-schema>extensibility</discovery-schema>
+          <discovery-hierarchy></discovery-hierarchy>
+          <password-management-enabled>1</password-management-enabled>
+          <assembly-version>1.0.0.0</assembly-version>
+          <supports-parameters-ex>0</supports-parameters-ex>
+          <export-type>5</export-type>
+          <capability-bits>2164758584</capability-bits>
+        </extension-config>
+        <parameter-definitions refreshSchema="0" refreshPartition="0" refreshConnectivityParameters="0" refreshSchemaParameters="0" refreshCapabilitiesParameters="0" refreshGlobalParameters="0" refreshOtherParameters="0">
+          <parameter>
+            <name>Tenant URL</name>
+            <use>connectivity</use>
+            <type>string</type>
+            <validation></validation>
+            <text></text>
+            <default-value></default-value>
+          </parameter>
+          <parameter>
+            <name>API key</name>
+            <use>connectivity</use>
+            <type>encrypted-string</type>
+            <validation></validation>
+            <text></text>
+            <default-value></default-value>
+          </parameter>
+          <parameter>
+            <name>Log file</name>
+            <use>connectivity</use>
+            <type>string</type>
+            <validation></validation>
+            <text></text>
+            <default-value></default-value>
+          </parameter>
+          <parameter>
+            <name>Include built-in groups</name>
+            <use>global</use>
+            <type>checkbox</type>
+            <validation></validation>
+            <text></text>
+            <default-value>0</default-value>
+          </parameter>
+          <parameter>
+            <name>Include app groups</name>
+            <use>global</use>
+            <type>checkbox</type>
+            <validation></validation>
+            <text></text>
+            <default-value>0</default-value>
+          </parameter>
+          <parameter>
+            <name></name>
+            <use>global</use>
+            <type>divider</type>
+            <validation></validation>
+            <text></text>
+            <default-value></default-value>
+          </parameter>
+          <parameter>
+            <name>User deprovisioning action</name>
+            <use>global</use>
+            <type>drop-down</type>
+            <validation>Delete,Deactivate,</validation>
+            <text></text>
+            <default-value>Deactivate</default-value>
+            <dropdown-extensible>0</dropdown-extensible>
+          </parameter>
+        </parameter-definitions>
+        <parameter-values>
+          <parameter name="API key" type="encrypted-string" use="connectivity" encrypted="1"></parameter>
+          <parameter name="Tenant URL" type="string" use="connectivity">https://lithnet.oktapreview.com</parameter>
+          <parameter name="Log file" type="string" use="connectivity">D:\MAData\Okta\okta.log</parameter>
+          <parameter name="Include built-in groups" type="checkbox" use="global">0</parameter>
+          <parameter name="Include app groups" type="checkbox" use="global">0</parameter>
+          <parameter name="User deprovisioning action" type="drop-down" use="global">Deactivate</parameter>
+        </parameter-values>
+        <default_visible_attributes>
+          <attribute>id</attribute>
+          <attribute>status</attribute>
+          <attribute>created</attribute>
+          <attribute>activated</attribute>
+          <attribute>statusChanged</attribute>
+          <attribute>lastLogin</attribute>
+          <attribute>lastUpdated</attribute>
+          <attribute>passwordChanged</attribute>
+          <attribute>provider.type</attribute>
+          <attribute>provider.name</attribute>
+          <attribute>suspended</attribute>
+          <attribute>login</attribute>
+          <attribute>firstName</attribute>
+          <attribute>lastName</attribute>
+          <attribute>middleName</attribute>
+          <attribute>honorificPrefix</attribute>
+          <attribute>honorificSuffix</attribute>
+          <attribute>email</attribute>
+          <attribute>title</attribute>
+          <attribute>displayName</attribute>
+          <attribute>nickName</attribute>
+          <attribute>profileUrl</attribute>
+          <attribute>secondEmail</attribute>
+          <attribute>mobilePhone</attribute>
+          <attribute>primaryPhone</attribute>
+          <attribute>streetAddress</attribute>
+          <attribute>city</attribute>
+          <attribute>state</attribute>
+          <attribute>zipCode</attribute>
+          <attribute>countryCode</attribute>
+          <attribute>postalAddress</attribute>
+          <attribute>preferredLanguage</attribute>
+          <attribute>locale</attribute>
+          <attribute>timezone</attribute>
+          <attribute>userType</attribute>
+          <attribute>employeeNumber</attribute>
+          <attribute>costCenter</attribute>
+          <attribute>organization</attribute>
+          <attribute>division</attribute>
+          <attribute>department</attribute>
+          <attribute>managerId</attribute>
+          <attribute>manager</attribute>
+          <attribute>lastMembershipUpdated</attribute>
+          <attribute>type</attribute>
+          <attribute>name</attribute>
+          <attribute>description</attribute>
+          <attribute>member</attribute>
+        </default_visible_attributes>
+        <password-extension-config>
+          <password-extension-enabled>0</password-extension-enabled>
+          <dll></dll>
+          <password-set-enabled></password-set-enabled>
+          <password-change-enabled></password-change-enabled>
+          <connection-info>
+            <connect-to></connect-to>
+            <user></user>
+          </connection-info>
+          <timeout></timeout>
+        </password-extension-config>
+        <case_normalize_dn_for_anchor>1</case_normalize_dn_for_anchor>
+      </MAConfig>
+    </private-configuration>
+    <SyncConfig-refresh-schema>0</SyncConfig-refresh-schema>
+    <ma-partition-data>
+      <partition>
+        <id>{E687196B-1CF3-46C7-ABFD-5B6CBEA1B8C5}</id>
+        <name>default</name>
+        <creation-time>2018-05-20 10:12:31.007</creation-time>
+        <last-modification-time>2018-05-20 10:12:31.007</last-modification-time>
+        <version>1</version>
+        <selected>1</selected>
+        <filter>
+          <object-classes>
+            <object-class>group</object-class>
+            <object-class>user</object-class>
+          </object-classes>
+          <containers>
+            <exclusions/>
+            <inclusions>
+              <inclusion></inclusion>
+            </inclusions>
+          </containers>
+        </filter>
+        <custom-data>
+          <ecma-partition-data>
+            <dn>default</dn>
+            <name>default</name>
+            <is-domain>1</is-domain>
+          </ecma-partition-data>
+        </custom-data>
+        <allowed-operations>1073741854</allowed-operations>
+        <current>
+          <batch-number>1</batch-number>
+          <sequence-number>0</sequence-number>
+        </current>
+        <last-successful-batch>0</last-successful-batch>
+        <filter-hints>
+          <object-classes>
+            <object-class>
+              <name>group</name>
+              <hierarchy>
+                <object-class>group</object-class>
+              </hierarchy>
+              <included>1</included>
+            </object-class>
+            <object-class>
+              <name>user</name>
+              <hierarchy>
+                <object-class>user</object-class>
+              </hierarchy>
+              <included>1</included>
+            </object-class>
+          </object-classes>
+        </filter-hints>
+      </partition>
+    </ma-partition-data>
+
+    <ma-run-data>
+    </ma-run-data>
+
+    <capabilities-mask>81079839</capabilities-mask>
+    <export-type>5</export-type>
+    <dn-construction/>
+    <password-sync>
+      <maximum-retry-count>10</maximum-retry-count>
+      <retry-interval>60</retry-interval>
+      <allow-low-security>0</allow-low-security>
+    </password-sync>
+    <component_mappings/>
+  </ma-data>
+
+  <mv-data>
+    <import-attribute-flow/>
+  </mv-data>
+
+</export-ma>
