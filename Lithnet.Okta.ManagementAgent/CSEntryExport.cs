@@ -11,7 +11,7 @@ namespace Lithnet.Okta.ManagementAgent
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static CSEntryChangeResult PutCSEntryChange(CSEntryChange csentry, IConnectionContext connectionContext, MAConfigParameters configParameters, CancellationToken token)
+        public static CSEntryChangeResult PutCSEntryChange(CSEntryChange csentry, ExportContext context)
         {
             Stopwatch timer = new Stopwatch();
 
@@ -20,7 +20,7 @@ namespace Lithnet.Okta.ManagementAgent
                 timer.Start();
                 if (csentry.ObjectType == "user")
                 {
-                    return CSEntryExportUsers.PutCSEntryChange(csentry, ((OktaConnectionContext)connectionContext).Client, configParameters, token);
+                    return CSEntryExportUsers.PutCSEntryChange(csentry, context);
                 }
                 else
                 {
@@ -34,7 +34,7 @@ namespace Lithnet.Okta.ManagementAgent
             }
         }
 
-        public static IConnectionContext GetConnectionContext(MAConfigParameters configParameters)
+        public static object GetConnectionContext(MAConfigParameters configParameters)
         {
             return OktaConnectionContext.GetConnectionContext(configParameters);
         }

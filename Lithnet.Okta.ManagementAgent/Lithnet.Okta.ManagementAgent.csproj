@@ -170,9 +170,11 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CSEntryPassword.cs" />
-    <Compile Include="IExportConnectionContext.cs" />
-    <Compile Include="IImportConnectionContext.cs" />
-    <Compile Include="IConnectionContext.cs" />
+    <Compile Include="EcmaFramework\SchemaContext.cs" />
+    <Compile Include="EcmaFramework\PasswordContext.cs" />
+    <Compile Include="EcmaFramework\ExportContext.cs" />
+    <Compile Include="EcmaFramework\ImportContext.cs" />
+    <Compile Include="EcmaFramework\IConnectionContext.cs" />
     <Compile Include="MAConfigParameters.cs" />
     <Compile Include="MAConfigSection.cs" />
     <Compile Include="CSEntryExportUsers.cs" />
@@ -180,7 +182,7 @@
     <Compile Include="CSEntryImportGroups.cs" />
     <Compile Include="CSEntryImportUsers.cs" />
     <Compile Include="CSEntryImport.cs" />
-    <Compile Include="Ecma2.cs" />
+    <Compile Include="EcmaFramework\Ecma2.cs" />
     <Compile Include="GenericExtensions.cs" />
     <Compile Include="MASchema.cs" />
     <Compile Include="OktaConnectionContext.cs" />
@@ -195,6 +197,7 @@
   <ItemGroup>
     <Content Include="FodyWeavers.xml" />
   </ItemGroup>
+  <ItemGroup />
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <Import Project="..\packages\Fody.3.0.0\build\Fody.targets" Condition="Exists('..\packages\Fody.3.0.0\build\Fody.targets')" />
   <Target Name="EnsureNuGetPackageBuildImports" BeforeTargets="PrepareForBuild">

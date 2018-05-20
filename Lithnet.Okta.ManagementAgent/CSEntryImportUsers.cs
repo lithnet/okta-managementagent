@@ -19,9 +19,9 @@ namespace Lithnet.Okta.ManagementAgent
 
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        internal static IEnumerable<Watermark> GetCSEntryChanges(bool inDelta, WatermarkKeyedCollection importState, SchemaType schemaType, CancellationToken cancellationToken, BlockingCollection<CSEntryChange> importItems, IOktaClient client)
+        internal static void GetCSEntryChanges(SchemaType schemaType, ImportContext context)
         {
-            ParallelOptions options = new ParallelOptions { CancellationToken = cancellationToken };
+            ParallelOptions options = new ParallelOptions { CancellationToken = context.CancellationTokenSource.Token };
 
             if (Debugger.IsAttached)
             {
@@ -31,9 +31,8 @@ namespace Lithnet.Okta.ManagementAgent
             object syncObject = new object();
             userHighestTicks = 0;
 
-            IAsyncEnumerable<IUser> users = CSEntryImportUsers.GetUserEnumerable(inDelta, importState, client);
+            IAsyncEnumerable<IUser> users = CSEntryImportUsers.GetUserEnumerable(context.InDelta, context.IncomingWatermark, ((OktaConnectionContext)context.ConnectionContext).Client);
 
-            //users.ForEach(user =>
             Parallel.ForEach<IUser>(users.ToEnumerable(), options, (user) =>
             {
                 try
@@ -46,10 +45,10 @@ namespace Lithnet.Okta.ManagementAgent
                         }
                     }
 
-                    CSEntryChange c = CSEntryImportUsers.UserToCSEntryChange(inDelta, schemaType, user);
+                    CSEntryChange c = CSEntryImportUsers.UserToCSEntryChange(context.InDelta, schemaType, user);
                     if (c != null)
                     {
-                        importItems.Add(c, cancellationToken);
+                        context.ImportItems.Add(c, context.CancellationTokenSource.Token);
                     }
                 }
                 catch (Exception ex)
@@ -60,7 +59,7 @@ namespace Lithnet.Okta.ManagementAgent
                     csentry.ErrorCodeImport = MAImportError.ImportErrorCustomContinueRun;
                     csentry.ErrorDetail = ex.StackTrace;
                     csentry.ErrorName = ex.Message;
-                    importItems.Add(csentry, cancellationToken);
+                    context.ImportItems.Add(csentry, context.CancellationTokenSource.Token);
                 }
 
                 options.CancellationToken.ThrowIfCancellationRequested();
@@ -70,14 +69,14 @@ namespace Lithnet.Okta.ManagementAgent
 
             if (CSEntryImportUsers.userHighestTicks <= 0)
             {
-                wmv = importState["users"].Value;
+                wmv = context.IncomingWatermark["users"].Value;
             }
             else
             {
                 wmv = CSEntryImportUsers.userHighestTicks.ToString();
             }
 
-            yield return new Watermark("users", wmv, "DateTime");
+            context.OutgoingWatermark.Add(new Watermark("users", wmv, "DateTime"));
         }
 
         private static CSEntryChange UserToCSEntryChange(bool inDelta, SchemaType schemaType, IUser user)

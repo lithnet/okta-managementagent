@@ -25,27 +25,13 @@ namespace Lithnet.Okta.ManagementAgent
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
-        private IConnectionContext passwordChangeConnectionContext;
+        private ImportContext importContext;
 
-        private IConnectionContext exportConnectionContext;
+        private ExportContext exportContext;
 
-        private BlockingCollection<CSEntryChange> importCSEntries;
-
-        private double productionDurationSeconds;
-
-        private CancellationTokenSource cancellationTokenSource;
-
-        private bool inDelta;
-
-        private int currentRow;
-
-        private readonly Stopwatch timer = new Stopwatch();
+        private PasswordContext passwordContext;
 
         private Task producerTask;
-
-        private WatermarkKeyedCollection importStateToSave;
-
-        private MAConfigParameters currentConfig;
 
         private int PageSize { get; set; }
 
@@ -78,51 +64,32 @@ namespace Lithnet.Okta.ManagementAgent
 
         // *** Import ***
 
-        private void SetupLogger(MAConfigParameters configParameters)
-        {
-            LoggingConfiguration config = new LoggingConfiguration();
-
-            OutputDebugStringTarget traceTarget = new OutputDebugStringTarget();
-            config.AddTarget("trace", traceTarget);
-            traceTarget.Layout = @"${longdate}|[${threadid}]|${level:uppercase=true:padding=5}|${message}${exception:format=ToString}";
-
-            LoggingRule rule1 = new LoggingRule("*", LogLevel.Trace, traceTarget);
-            config.LoggingRules.Add(rule1);
-
-            if (!string.IsNullOrWhiteSpace(configParameters.LogFileName))
-            {
-                FileTarget fileTarget = new FileTarget();
-                config.AddTarget("file", fileTarget);
-                fileTarget.FileName = configParameters.LogFileName;
-                fileTarget.Layout = "${longdate}|[${threadid}]|${level:uppercase=true:padding=5}|${message}${exception:format=ToString}";
-                LoggingRule rule2 = new LoggingRule("*", LogLevel.Trace, fileTarget);
-                config.LoggingRules.Add(rule2);
-            }
-
-            LogManager.Configuration = config;
-        }
-
         public OpenImportConnectionResults OpenImportConnection(KeyedCollection<string, ConfigParameter> configParameters, Schema types, OpenImportConnectionRunStep importRunStep)
         {
             MAConfigParameters maConfigParameters = new MAConfigParameters(configParameters);
 
             this.SetupLogger(maConfigParameters);
 
-            this.importCSEntries = new BlockingCollection<CSEntryChange>();
-            this.inDelta = importRunStep.ImportType == OperationType.Delta;
-            this.cancellationTokenSource = new CancellationTokenSource();
+            this.importContext = new ImportContext()
+            {
+                CancellationTokenSource = new CancellationTokenSource(),
+                InDelta = importRunStep.ImportType == OperationType.Delta,
+                ImportItems = new BlockingCollection<CSEntryChange>(),
+                ConfigParameters = maConfigParameters,
+                Types = types
+            };
 
             try
             {
-                logger.Info("Starting {0} import", this.inDelta ? "delta" : "full");
+                logger.Info("Starting {0} import", this.importContext.InDelta ? "delta" : "full");
 
-                IConnectionContext connectionContext = CSEntryImport.GetConnectionContext(maConfigParameters);
+                this.importContext.ConnectionContext = CSEntryImport.GetConnectionContext(maConfigParameters);
 
                 if (!string.IsNullOrEmpty(importRunStep.CustomData))
                 {
                     try
                     {
-                        this.importStateToSave = JsonConvert.DeserializeObject<WatermarkKeyedCollection>(importRunStep.CustomData);
+                        this.importContext.IncomingWatermark = JsonConvert.DeserializeObject<WatermarkKeyedCollection>(importRunStep.CustomData);
                     }
                     catch (Exception ex)
                     {
@@ -131,9 +98,9 @@ namespace Lithnet.Okta.ManagementAgent
                 }
 
                 this.PageSize = importRunStep.PageSize;
-                this.timer.Restart();
+                this.importContext.Timer.Start();
 
-                this.StartCreatingCSEntryChanges(maConfigParameters, types, this.importStateToSave, connectionContext);
+                this.StartCreatingCSEntryChanges(this.importContext);
             }
             catch (Exception ex)
             {
@@ -146,49 +113,50 @@ namespace Lithnet.Okta.ManagementAgent
 
         public GetImportEntriesResults GetImportEntries(GetImportEntriesRunStep importRunStep)
         {
-            return this.ConsumeImportEntriesFromProducer();
+            return this.ConsumePageFromProducer();
         }
 
         public CloseImportConnectionResults CloseImportConnection(CloseImportConnectionRunStep importRunStep)
         {
-            if (this.timer.IsRunning)
-            {
-                this.timer.Stop();
-            }
-
             logger.Info("Closing import connection: {0}", importRunStep.Reason);
 
+            if (this.importContext == null)
+            {
+                logger.Trace("No import context detected");
+                return new CloseImportConnectionResults();
+            }
+
+            this.importContext.Timer.Stop();
+          
             if (importRunStep.Reason != CloseReason.Normal)
             {
-                if (this.cancellationTokenSource != null)
+                if (this.importContext.CancellationTokenSource != null)
                 {
                     logger.Info("Cancellation request received");
-                    this.cancellationTokenSource.Cancel();
-                    this.cancellationTokenSource.Token.WaitHandle.WaitOne();
-                    this.cancellationTokenSource.Dispose();
+                    this.importContext.CancellationTokenSource.Cancel();
+                    this.importContext.CancellationTokenSource.Token.WaitHandle.WaitOne();
                     logger.Info("Cancellation completed");
                 }
             }
 
-            this.importCSEntries = null;
-
             logger.Info("Import operation complete");
-            logger.Info("Imported {0} objects", this.currentRow);
-            logger.Info("Import duration: {0}", this.timer.Elapsed);
+            logger.Info("Imported {0} objects", this.importContext.ImportedItemCount);
 
-            if (this.currentRow > 0 && this.timer.Elapsed.TotalSeconds > 0)
+            if (this.importContext.ImportedItemCount > 0 && this.importContext.Timer.Elapsed.TotalSeconds > 0)
             {
-                if (this.productionDurationSeconds > 0)
+                if (this.importContext.ProducerDuration.TotalSeconds > 0)
                 {
-                    logger.Info("CSEntryChange production speed: {0} obj/sec", (int)(this.currentRow / this.productionDurationSeconds));
+                    logger.Info("CSEntryChange production duration: {0}", this.importContext.ProducerDuration);
+                    logger.Info("CSEntryChange production speed: {0} obj/sec", (int)(this.importContext.ImportedItemCount / this.importContext.ProducerDuration.TotalSeconds));
                 }
 
-                logger.Info("Import speed: {0} obj/sec", (int)(this.currentRow / this.timer.Elapsed.TotalSeconds));
+                logger.Info("Import duration: {0}", this.importContext.Timer.Elapsed);
+                logger.Info("Import speed: {0} obj/sec", (int)(this.importContext.ImportedItemCount / this.importContext.Timer.Elapsed.TotalSeconds));
             }
 
-            if (this.importStateToSave?.Any() == true)
+            if (this.importContext.OutgoingWatermark?.Any() == true)
             {
-                string wm = JsonConvert.SerializeObject(this.importStateToSave);
+                string wm = JsonConvert.SerializeObject(this.importContext.OutgoingWatermark);
                 logger.Trace($"Watermark: {wm}");
                 return new CloseImportConnectionResults(wm);
             }
@@ -198,12 +166,11 @@ namespace Lithnet.Okta.ManagementAgent
             }
         }
 
-        private void StartCreatingCSEntryChanges(MAConfigParameters configParameters, Schema types, WatermarkKeyedCollection incomingImportState, IConnectionContext connectionContext)
+        private void StartCreatingCSEntryChanges(ImportContext context)
         {
-            if (this.importCSEntries == null)
+            if (context == null)
             {
-                logger.Info("The import entry list was not created");
-                return;
+                throw new ArgumentNullException(nameof(context));
             }
 
             logger.Info("Starting producer thread");
@@ -212,7 +179,7 @@ namespace Lithnet.Okta.ManagementAgent
             {
                 try
                 {
-                    this.importStateToSave = CSEntryImport.GetCSEntryChanges(this.inDelta, configParameters, incomingImportState, types, this.cancellationTokenSource.Token, this.importCSEntries, connectionContext);
+                    CSEntryImport.GetCSEntryChanges(context);
                 }
                 catch (OperationCanceledException)
                 {
@@ -226,26 +193,22 @@ namespace Lithnet.Okta.ManagementAgent
                 }
                 finally
                 {
-                    if (this.timer?.IsRunning == true)
-                    {
-                        this.productionDurationSeconds = this.timer.Elapsed.TotalSeconds;
-                    }
-
+                    context.ProducerDuration = context.Timer.Elapsed;
                     logger.Info("CSEntryChange production complete");
-                    this.importCSEntries.CompleteAdding();
+                    context.ImportItems.CompleteAdding();
                 }
             });
 
             this.producerTask.Start();
         }
 
-        private GetImportEntriesResults ConsumeImportEntriesFromProducer()
+        private GetImportEntriesResults ConsumePageFromProducer()
         {
             int count = 0;
             bool mayHaveMore = false;
             GetImportEntriesResults results = new GetImportEntriesResults { CSEntries = new List<CSEntryChange>() };
 
-            if (this.importCSEntries.IsCompleted)
+            if (this.importContext.ImportItems.IsCompleted)
             {
                 results.MoreToImport = false;
                 return results;
@@ -254,7 +217,7 @@ namespace Lithnet.Okta.ManagementAgent
             this.Batch++;
             logger.Trace($"Producing page {this.Batch}");
 
-            while (!this.importCSEntries.IsCompleted || this.cancellationTokenSource.IsCancellationRequested)
+            while (!this.importContext.ImportItems.IsCompleted || this.importContext.CancellationTokenSource.IsCancellationRequested)
             {
                 count++;
                 CSEntryChange csentry = null;
@@ -262,8 +225,8 @@ namespace Lithnet.Okta.ManagementAgent
                 try
                 {
                     // May be able to change this to Take(this.PageSize);
-                    csentry = this.importCSEntries.Take();
-                    this.currentRow++;
+                    csentry = this.importContext.ImportItems.Take();
+                    this.importContext.ImportedItemCount++;
                 }
                 catch (InvalidOperationException)
                 {
@@ -308,8 +271,14 @@ namespace Lithnet.Okta.ManagementAgent
             {
                 MAConfigParameters maconfigParameters = new MAConfigParameters(configParameters);
                 this.SetupLogger(maconfigParameters);
-                IConnectionContext connectionContext = MASchema.GetConnectionContext(maconfigParameters);
-                return MASchema.GetMmsSchema(connectionContext);
+
+                SchemaContext context = new SchemaContext()
+                {
+                    ConfigParameters = maconfigParameters,
+                    ConnectionContext = MASchema.GetConnectionContext(maconfigParameters)
+                };
+
+                return MASchema.GetMmsSchema(context);
             }
             catch (Exception ex)
             {
@@ -335,15 +304,18 @@ namespace Lithnet.Okta.ManagementAgent
             MAConfigParameters maConfigParameters = new MAConfigParameters(configParameters);
 
             this.SetupLogger(maConfigParameters);
-            this.cancellationTokenSource = new CancellationTokenSource();
+
+            this.exportContext = new ExportContext()
+            {
+                CancellationTokenSource = new CancellationTokenSource(),
+                ConfigParameters = maConfigParameters
+            };
 
             try
             {
                 logger.Info("Starting export");
-
-                this.currentConfig = maConfigParameters;
-                this.exportConnectionContext = CSEntryExport.GetConnectionContext(maConfigParameters);
-                this.timer.Restart();
+                this.exportContext.ConnectionContext = CSEntryExport.GetConnectionContext(maConfigParameters);
+                this.exportContext.Timer.Start();
             }
             catch (Exception ex)
             {
@@ -359,16 +331,16 @@ namespace Lithnet.Okta.ManagementAgent
             ParallelOptions po = new ParallelOptions
             {
                 MaxDegreeOfParallelism = MAConfigSection.Configuration.ExportThreads,
-                CancellationToken = this.cancellationTokenSource.Token
+                CancellationToken = this.exportContext.CancellationTokenSource.Token
             };
 
             Parallel.ForEach(csentries, po, (csentry) =>
             {
-                Interlocked.Increment(ref this.currentRow);
+                Interlocked.Increment(ref this.exportContext.ExportedItemCount);
                 logger.Info("Performing export for " + csentry.DN);
                 try
                 {
-                    CSEntryChangeResult result = CSEntryExport.PutCSEntryChange(csentry, this.exportConnectionContext, this.currentConfig, this.cancellationTokenSource.Token);
+                    CSEntryChangeResult result = CSEntryExport.PutCSEntryChange(csentry, this.exportContext);
                     lock (results)
                     {
                         results.CSEntryChangeResults.Add(result);
@@ -389,31 +361,34 @@ namespace Lithnet.Okta.ManagementAgent
 
         public void CloseExportConnection(CloseExportConnectionRunStep exportRunStep)
         {
-            if (this.timer.IsRunning)
+            logger.Info("Closing export connection: {0}", exportRunStep.Reason);
+
+            if (this.exportContext == null)
             {
-                this.timer.Stop();
+                logger.Trace("No export context detected");
+                return;
             }
+
+            this.exportContext.Timer.Stop();
 
             if (exportRunStep.Reason != CloseReason.Normal)
             {
-                if (this.cancellationTokenSource != null)
+                if (this.exportContext.CancellationTokenSource != null)
                 {
                     logger.Info("Cancellation request received");
-                    this.cancellationTokenSource.Cancel();
-                    this.cancellationTokenSource.Token.WaitHandle.WaitOne();
+                    this.exportContext.CancellationTokenSource.Cancel();
+                    this.exportContext.CancellationTokenSource.Token.WaitHandle.WaitOne();
                     logger.Info("Cancellation completed");
                 }
             }
 
-            this.importCSEntries = null;
-
             logger.Info("Export operation complete");
-            logger.Info("Exported {0} objects", this.currentRow);
-            logger.Info("Export duration: {0}", this.timer.Elapsed);
-            if (this.currentRow > 0 && this.timer.Elapsed.TotalSeconds > 0)
+            logger.Info("Exported {0} objects", this.exportContext.ExportedItemCount);
+            logger.Info("Export duration: {0}", this.exportContext.Timer.Elapsed);
+            if (this.exportContext.ExportedItemCount > 0 && this.exportContext.Timer.Elapsed.TotalSeconds > 0)
             {
-                logger.Info("Speed: {0} obj/sec", (int)(this.currentRow / this.timer.Elapsed.TotalSeconds));
-                logger.Info("Average: {0} sec/obj", this.timer.Elapsed.TotalSeconds / this.currentRow);
+                logger.Info("Speed: {0} obj/sec", (int)(this.exportContext.ExportedItemCount / this.exportContext.Timer.Elapsed.TotalSeconds));
+                logger.Info("Average: {0} sec/obj", this.exportContext.Timer.Elapsed.TotalSeconds / this.exportContext.ExportedItemCount);
             }
         }
 
@@ -421,7 +396,11 @@ namespace Lithnet.Okta.ManagementAgent
         {
             MAConfigParameters maConfigParameters = new MAConfigParameters(configParameters);
             this.SetupLogger(maConfigParameters);
-            this.passwordChangeConnectionContext = CSEntryPassword.GetConnectionContext(maConfigParameters);
+            this.passwordContext = new PasswordContext()
+            {
+                ConnectionContext = CSEntryPassword.GetConnectionContext(maConfigParameters),
+                ConfigParameters = maConfigParameters
+            };
         }
 
         public void ClosePasswordConnection()
@@ -438,7 +417,7 @@ namespace Lithnet.Okta.ManagementAgent
             try
             {
                 logger.Trace($"Setting password for: {csentry.DN}");
-                CSEntryPassword.SetPassword(csentry, newPassword, options, this.passwordChangeConnectionContext);
+                CSEntryPassword.SetPassword(csentry, newPassword, options, this.passwordContext);
                 logger.Info($"Successfully set password for: {csentry.DN}");
             }
             catch (Exception ex)
@@ -454,7 +433,7 @@ namespace Lithnet.Okta.ManagementAgent
             try
             {
                 logger.Info($"Changing password for: {csentry.DN}");
-                CSEntryPassword.ChangePassword(csentry, oldPassword, newPassword, this.passwordChangeConnectionContext);
+                CSEntryPassword.ChangePassword(csentry, oldPassword, newPassword, this.passwordContext);
                 logger.Info($"Successfully changed password for: {csentry.DN}");
             }
             catch (Exception ex)
@@ -464,5 +443,30 @@ namespace Lithnet.Okta.ManagementAgent
                 throw;
             }
         }
+
+        private void SetupLogger(MAConfigParameters configParameters)
+        {
+            LoggingConfiguration config = new LoggingConfiguration();
+
+            OutputDebugStringTarget traceTarget = new OutputDebugStringTarget();
+            config.AddTarget("trace", traceTarget);
+            traceTarget.Layout = @"${longdate}|[${threadid}]|${level:uppercase=true:padding=5}|${message}${exception:format=ToString}";
+
+            LoggingRule rule1 = new LoggingRule("*", LogLevel.Trace, traceTarget);
+            config.LoggingRules.Add(rule1);
+
+            if (!string.IsNullOrWhiteSpace(configParameters.LogFileName))
+            {
+                FileTarget fileTarget = new FileTarget();
+                config.AddTarget("file", fileTarget);
+                fileTarget.FileName = configParameters.LogFileName;
+                fileTarget.Layout = "${longdate}|[${threadid}]|${level:uppercase=true:padding=5}|${message}${exception:format=ToString}";
+                LoggingRule rule2 = new LoggingRule("*", LogLevel.Trace, fileTarget);
+                config.LoggingRules.Add(rule2);
+            }
+
+            LogManager.Configuration = config;
+        }
+
     }
 }

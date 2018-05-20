@@ -1,6 +1,6 @@
 ﻿namespace Lithnet.Okta.ManagementAgent
 {
-    interface IConnectionContext
+    public interface IConnectionContextx
     {
     }
 }

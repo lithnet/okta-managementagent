@@ -11,14 +11,14 @@ namespace Lithnet.Okta.ManagementAgent
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static IConnectionContext GetConnectionContext(MAConfigParameters configParameters)
+        public static object GetConnectionContext(MAConfigParameters configParameters)
         {
             return OktaConnectionContext.GetConnectionContext(configParameters);
         }
 
-        public static Schema GetMmsSchema(IConnectionContext connectionContext)
+        public static Schema GetMmsSchema(SchemaContext context)
         {
-            IOktaClient client = ((OktaConnectionContext)connectionContext).Client;
+            IOktaClient client = ((OktaConnectionContext)context.ConnectionContext).Client;
 
             Schema mmsSchema = new Schema();
             SchemaType mmsType = MASchema.GetSchemaTypeUser(client);

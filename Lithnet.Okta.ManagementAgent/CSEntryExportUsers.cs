@@ -14,24 +14,24 @@ namespace Lithnet.Okta.ManagementAgent
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        internal static CSEntryChangeResult PutCSEntryChange(CSEntryChange csentry, IOktaClient client, MAConfigParameters configParameters, CancellationToken token)
+        internal static CSEntryChangeResult PutCSEntryChange(CSEntryChange csentry, ExportContext context)
         {
 
-            return CSEntryExportUsers.PutCSEntryChangeObject(csentry, client, configParameters, token);
+            return CSEntryExportUsers.PutCSEntryChangeObject(csentry, context);
         }
 
-        public static CSEntryChangeResult PutCSEntryChangeObject(CSEntryChange csentry, IOktaClient client, MAConfigParameters configParameters, CancellationToken token)
+        public static CSEntryChangeResult PutCSEntryChangeObject(CSEntryChange csentry, ExportContext context)
         {
             switch (csentry.ObjectModificationType)
             {
                 case ObjectModificationType.Add:
-                    return CSEntryExportUsers.PutCSEntryChangeAdd(csentry, client, token);
+                    return CSEntryExportUsers.PutCSEntryChangeAdd(csentry, context);
 
                 case ObjectModificationType.Delete:
-                    return CSEntryExportUsers.PutCSEntryChangeDelete(csentry, client, configParameters, token);
+                    return CSEntryExportUsers.PutCSEntryChangeDelete(csentry, context);
 
                 case ObjectModificationType.Update:
-                    return CSEntryExportUsers.PutCSEntryChangeUpdate(csentry, client, token);
+                    return CSEntryExportUsers.PutCSEntryChangeUpdate(csentry, context);
 
                 default:
                 case ObjectModificationType.None:
@@ -41,19 +41,21 @@ namespace Lithnet.Okta.ManagementAgent
             }
         }
 
-        private static CSEntryChangeResult PutCSEntryChangeDelete(CSEntryChange csentry, IOktaClient client, MAConfigParameters configParameters, CancellationToken token)
+        private static CSEntryChangeResult PutCSEntryChangeDelete(CSEntryChange csentry, ExportContext context)
         {
-            client.Users.DeactivateUserAsync(csentry.DN, token).Wait(token);
+            IOktaClient client = ((OktaConnectionContext) context.ConnectionContext).Client;
 
-            if (configParameters.DeprovisioningAction == "Delete")
+            client.Users.DeactivateUserAsync(csentry.DN, context.CancellationTokenSource.Token).Wait(context.CancellationTokenSource.Token);
+
+            if (context.ConfigParameters.DeprovisioningAction == "Delete")
             {
-                client.Users.DeactivateOrDeleteUserAsync(csentry.DN, token).Wait(token);
+                client.Users.DeactivateOrDeleteUserAsync(csentry.DN, context.CancellationTokenSource.Token).Wait(context.CancellationTokenSource.Token);
             }
 
             return CSEntryChangeResult.Create(csentry.Identifier, null, MAExportError.Success);
         }
 
-        private static CSEntryChangeResult PutCSEntryChangeAdd(CSEntryChange csentry, IOktaClient client, CancellationToken token)
+        private static CSEntryChangeResult PutCSEntryChangeAdd(CSEntryChange csentry, ExportContext context)
         {
             AuthenticationProvider provider = new AuthenticationProvider();
             provider.Type = AuthenticationProviderType.Okta;
@@ -100,11 +102,13 @@ namespace Lithnet.Okta.ManagementAgent
                 Activate = true
             };
 
-            IUser result = client.Users.CreateUserAsync(options, token).Result;
+            IOktaClient client = ((OktaConnectionContext)context.ConnectionContext).Client;
+
+            IUser result = client.Users.CreateUserAsync(options, context.CancellationTokenSource.Token).Result;
 
             if (suspend)
             {
-                result.SuspendAsync(token).Wait(token);
+                result.SuspendAsync(context.CancellationTokenSource.Token).Wait(context.CancellationTokenSource.Token);
             }
 
             List<AttributeChange> anchorChanges = new List<AttributeChange>();
@@ -113,9 +117,11 @@ namespace Lithnet.Okta.ManagementAgent
             return CSEntryChangeResult.Create(csentry.Identifier, anchorChanges, MAExportError.Success);
         }
 
-        private static CSEntryChangeResult PutCSEntryChangeUpdate(CSEntryChange csentry, IOktaClient client, CancellationToken token)
+        private static CSEntryChangeResult PutCSEntryChangeUpdate(CSEntryChange csentry, ExportContext context)
         {
-            IUser user = client.Users.GetUserAsync(csentry.DN, token).Result;
+            IOktaClient client = ((OktaConnectionContext)context.ConnectionContext).Client;
+
+            IUser user = client.Users.GetUserAsync(csentry.DN, context.CancellationTokenSource.Token).Result;
 
             foreach (AttributeChange change in csentry.AttributeChanges)
             {
@@ -135,11 +141,11 @@ namespace Lithnet.Okta.ManagementAgent
                     if (user.Status == UserStatus.Active && suspend)
                     {
                         logger.Info($"Suspending user {user.Id}");
-                        user.SuspendAsync(token).Wait(token);
+                        user.SuspendAsync(context.CancellationTokenSource.Token).Wait(context.CancellationTokenSource.Token);
                     }
                     else if (user.Status == UserStatus.Suspended && !suspend)
                     {
-                        user.UnsuspendAsync(token).Wait(token);
+                        user.UnsuspendAsync(context.CancellationTokenSource.Token).Wait(context.CancellationTokenSource.Token);
                         logger.Info($"Unsuspending user {user.Id}");
                     }
                 }
@@ -169,7 +175,7 @@ namespace Lithnet.Okta.ManagementAgent
                 }
             }
 
-            IUser result = client.Users.UpdateUserAsync(user, csentry.DN, token).Result;
+            IUser result = client.Users.UpdateUserAsync(user, csentry.DN, context.CancellationTokenSource.Token).Result;
 
             return CSEntryChangeResult.Create(csentry.Identifier, null, MAExportError.Success);
         }

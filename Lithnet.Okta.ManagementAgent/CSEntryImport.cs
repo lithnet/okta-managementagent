@@ -13,25 +13,20 @@ namespace Lithnet.Okta.ManagementAgent
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static WatermarkKeyedCollection GetCSEntryChanges(bool inDelta, MAConfigParameters configParameters, WatermarkKeyedCollection importState, Schema importTypes, CancellationToken cancellationToken, BlockingCollection<CSEntryChange> importItems, IConnectionContext connectionContext)
+        public static WatermarkKeyedCollection GetCSEntryChanges(ImportContext context)
         {
             WatermarkKeyedCollection outgoingState = new WatermarkKeyedCollection();
             List<Task> taskList = new List<Task>();
 
-            IOktaClient client = ((OktaConnectionContext) connectionContext).Client;
-
-            foreach (SchemaType type in importTypes.Types)
+            foreach (SchemaType type in context.Types.Types)
             {
                 if (type.Name == "user")
                 {
                     taskList.Add(Task.Run(() =>
                     {
                         logger.Info("Starting CSEntryImportUsers");
-                        foreach (Watermark wm in CSEntryImportUsers.GetCSEntryChanges(inDelta, importState, type, cancellationToken, importItems, client))
-                        {
-                            outgoingState.Add(wm);
-                        }
-                    }, cancellationToken));
+                        CSEntryImportUsers.GetCSEntryChanges(type, context);
+                    }, context.CancellationTokenSource.Token));
                 }
 
                 if (type.Name == "group")
@@ -39,21 +34,17 @@ namespace Lithnet.Okta.ManagementAgent
                     taskList.Add(Task.Run(() =>
                     {
                         logger.Info("Starting CSEntryImportGroup");
-
-                        foreach (Watermark wm in CSEntryImportGroups.GetCSEntryChanges(inDelta, configParameters, importState, type, cancellationToken, importItems, client))
-                        {
-                            outgoingState.Add(wm);
-                        }
-                    }, cancellationToken));
+                        CSEntryImportGroups.GetCSEntryChanges(type, context);
+                    }, context.CancellationTokenSource.Token));
                 }
             }
 
-            Task.WaitAll(taskList.ToArray(), cancellationToken);
+            Task.WaitAll(taskList.ToArray(), context.CancellationTokenSource.Token);
 
             return outgoingState;
         }
 
-        public static IConnectionContext GetConnectionContext(MAConfigParameters configParameters)
+        public static object GetConnectionContext(MAConfigParameters configParameters)
         {
             return OktaConnectionContext.GetConnectionContext(configParameters);
         }

@@ -11,7 +11,7 @@ namespace Lithnet.Okta.ManagementAgent
 {
     internal static class CSEntryPassword
     {
-        public static void SetPassword(CSEntry csentry, SecureString newPassword, PasswordOptions options, IConnectionContext connectionContext)
+        public static void SetPassword(CSEntry csentry, SecureString newPassword, PasswordOptions options, PasswordContext context)
         {
             User u = new User
             {
@@ -24,12 +24,12 @@ namespace Lithnet.Okta.ManagementAgent
                 }
             };
 
-            ((OktaConnectionContext)connectionContext).Client.Users.UpdateUserAsync(u, csentry.DN.ToString()).Wait();
+            ((OktaConnectionContext)context.ConnectionContext).Client.Users.UpdateUserAsync(u, csentry.DN.ToString()).Wait();
         }
 
-        public static void ChangePassword(CSEntry csentry, SecureString oldPassword, SecureString newPassword, IConnectionContext connectionContext)
+        public static void ChangePassword(CSEntry csentry, SecureString oldPassword, SecureString newPassword, PasswordContext context)
         {
-            ((OktaConnectionContext)connectionContext).Client.Users.ChangePasswordAsync(csentry.DN.ToString(),
+            ((OktaConnectionContext)context.ConnectionContext).Client.Users.ChangePasswordAsync(csentry.DN.ToString(),
                 new ChangePasswordOptions()
                 {
                     NewPassword = newPassword.ConvertToUnsecureString(),
@@ -37,7 +37,7 @@ namespace Lithnet.Okta.ManagementAgent
                 }).Wait();
         }
 
-        public static IConnectionContext GetConnectionContext(MAConfigParameters configParameters)
+        public static object GetConnectionContext(MAConfigParameters configParameters)
         {
             return OktaConnectionContext.GetConnectionContext(configParameters);
         }
