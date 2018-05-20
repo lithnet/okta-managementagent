@@ -1,11 +1,7 @@
-﻿using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Threading;
+﻿using System.Collections.Generic;
 using System.Threading.Tasks;
 using Microsoft.MetadirectoryServices;
 using NLog;
-using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
@@ -13,9 +9,8 @@ namespace Lithnet.Okta.ManagementAgent
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public static WatermarkKeyedCollection GetCSEntryChanges(ImportContext context)
+        public static void GetCSEntryChanges(ImportContext context)
         {
-            WatermarkKeyedCollection outgoingState = new WatermarkKeyedCollection();
             List<Task> taskList = new List<Task>();
 
             foreach (SchemaType type in context.Types.Types)
@@ -40,8 +35,6 @@ namespace Lithnet.Okta.ManagementAgent
             }
 
             Task.WaitAll(taskList.ToArray(), context.CancellationTokenSource.Token);
-
-            return outgoingState;
         }
 
         public static object GetConnectionContext(MAConfigParameters configParameters)

@@ -1,16 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Reflection;
 using System.Runtime.InteropServices;
 using System.Security;
-using System.Text;
-using System.Threading.Tasks;
-using System.Xml.Serialization;
-using Newtonsoft.Json.Linq;
-using Okta.Sdk;
-using Okta.Sdk.Internal;
 
 namespace Lithnet.Okta.ManagementAgent
 {

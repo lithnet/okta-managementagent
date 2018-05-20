@@ -1,5 +1,5 @@
-﻿using System.Text;
-using System.Collections.ObjectModel;
+﻿using System.Collections.ObjectModel;
+using System.Text;
 using Newtonsoft.Json;
 
 namespace Lithnet.Okta.ManagementAgent

@@ -1,7 +1,5 @@
-﻿using System.Collections.Concurrent;
-using System.Diagnostics;
+﻿using System.Diagnostics;
 using System.Threading;
-using Microsoft.MetadirectoryServices;
 
 namespace Lithnet.Okta.ManagementAgent
 {

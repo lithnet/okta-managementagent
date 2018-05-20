@@ -1,8 +1,4 @@
-﻿using System.Collections.Concurrent;
-using System.Threading;
-using Microsoft.MetadirectoryServices;
-
-namespace Lithnet.Okta.ManagementAgent
+﻿namespace Lithnet.Okta.ManagementAgent
 {
     public class PasswordContext
     {

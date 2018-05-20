@@ -170,11 +170,14 @@
   </ItemGroup>
   <ItemGroup>
     <Compile Include="CSEntryPassword.cs" />
+    <Compile Include="EcmaFramework\Ecma2Password.cs" />
+    <Compile Include="EcmaFramework\Ecma2Import.cs" />
+    <Compile Include="EcmaFramework\Ecma2Export.cs" />
+    <Compile Include="EcmaFramework\Logging.cs" />
     <Compile Include="EcmaFramework\SchemaContext.cs" />
     <Compile Include="EcmaFramework\PasswordContext.cs" />
     <Compile Include="EcmaFramework\ExportContext.cs" />
     <Compile Include="EcmaFramework\ImportContext.cs" />
-    <Compile Include="EcmaFramework\IConnectionContext.cs" />
     <Compile Include="MAConfigParameters.cs" />
     <Compile Include="MAConfigSection.cs" />
     <Compile Include="CSEntryExportUsers.cs" />
@@ -183,12 +186,12 @@
     <Compile Include="CSEntryImportUsers.cs" />
     <Compile Include="CSEntryImport.cs" />
     <Compile Include="EcmaFramework\Ecma2.cs" />
-    <Compile Include="GenericExtensions.cs" />
+    <Compile Include="EcmaFramework\GenericExtensions.cs" />
     <Compile Include="MASchema.cs" />
     <Compile Include="OktaConnectionContext.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
-    <Compile Include="Watermark.cs" />
-    <Compile Include="WatermarkKeyedCollection.cs" />
+    <Compile Include="EcmaFramework\Watermark.cs" />
+    <Compile Include="EcmaFramework\WatermarkKeyedCollection.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="app.config" />

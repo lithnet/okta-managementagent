@@ -1,9 +1,6 @@
-﻿using System.Collections.ObjectModel;
-using System.Diagnostics;
-using System.Threading;
+﻿using System.Diagnostics;
 using Microsoft.MetadirectoryServices;
 using NLog;
-using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
