@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using Lithnet.Ecma2Framework;
@@ -65,6 +66,7 @@ namespace Lithnet.Okta.ManagementAgent
 
             UserProfile profile = new UserProfile();
             bool suspend = false;
+            string newPassword = null;
 
             foreach (AttributeChange change in csentry.AttributeChanges)
             {
@@ -83,6 +85,10 @@ namespace Lithnet.Okta.ManagementAgent
                 {
                     suspend = change.GetValueAdd<bool>();
                 }
+                else if (change.Name == "export_password")
+                {
+                    newPassword = change.GetValueAdd<string>();
+                }
                 else
                 {
                     if (change.IsMultiValued)
@@ -97,17 +103,32 @@ namespace Lithnet.Okta.ManagementAgent
                 }
             }
 
-            CreateUserWithProviderOptions options = new CreateUserWithProviderOptions()
-            {
-                Profile = profile,
-                ProviderName = provider.Name,
-                ProviderType = provider.Type,
-                Activate = true
-            };
-
             IOktaClient client = ((OktaConnectionContext)context.ConnectionContext).Client;
+            IUser result;
 
-            IUser result = client.Users.CreateUserAsync(options, context.CancellationTokenSource.Token).Result;
+            if (newPassword != null)
+            {
+                CreateUserWithPasswordOptions options = new CreateUserWithPasswordOptions()
+                {
+                    Password = newPassword,
+                    Activate = context.ConfigParameters[ConfigParameterNames.ActivateNewUsers].Value == "1",
+                    Profile = profile
+                };
+
+                result = client.Users.CreateUserAsync(options, context.CancellationTokenSource.Token).Result;
+            }
+            else
+            {
+                CreateUserWithProviderOptions options = new CreateUserWithProviderOptions()
+                {
+                    Profile = profile,
+                    ProviderName = provider.Name,
+                    ProviderType = provider.Type,
+                    Activate = context.ConfigParameters[ConfigParameterNames.ActivateNewUsers].Value == "1"
+                };
+
+                result = client.Users.CreateUserAsync(options, context.CancellationTokenSource.Token).Result;
+            }
 
             if (suspend)
             {
@@ -154,27 +175,19 @@ namespace Lithnet.Okta.ManagementAgent
                 }
                 else
                 {
-
                     if (change.IsMultiValued)
                     {
-                        IList<object> adds = change.GetValueAdds<object>();
-                        IList<object> deletes = change.GetValueDeletes<object>();
                         IList<object> existingItems = user.Profile[change.Name] as IList<object> ?? new List<object>();
-                        List<object> newList = new List<object>();
-
-                        newList.AddRange(existingItems.Except(deletes));
-                        newList.AddRange(adds);
-
+                        IList<object> newList = change.ApplyAttributeChanges((IList)existingItems);
                         user.Profile[change.Name] = newList;
+
+                        logger.Info($"Set {change.Name} to contain {newList.Count} items");
                     }
                     else
                     {
                         user.Profile[change.Name] = change.GetValueAdd<object>();
                         logger.Info($"Set {change.Name} to {user.Profile[change.Name] ?? "<null>"}");
                     }
-
-                    user.Profile[change.Name] = change.ValueChanges.FirstOrDefault(t => t.ModificationType == ValueModificationType.Add)?.Value;
-                    logger.Info($"Set {change.Name} to {user.Profile[change.Name] ?? "<null>"}");
                 }
             }
 

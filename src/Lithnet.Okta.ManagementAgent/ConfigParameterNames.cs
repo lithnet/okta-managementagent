@@ -18,5 +18,7 @@ namespace Lithnet.Okta.ManagementAgent
         internal static readonly string IncludeAppGroups = "Include app groups";
 
         internal static readonly string UserDeprovisioningAction = "User deprovisioning action";
+
+        internal static readonly string ActivateNewUsers = "Activate new users";
     }
 }

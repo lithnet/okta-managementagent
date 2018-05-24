@@ -124,7 +124,7 @@ namespace Lithnet.Okta.ManagementAgent
                 {
                     IList<object> members = new List<object>();
 
-                    group.UsersSkinny.ForEach(u => { members.Add(u.Id); });
+                    group.UsersSkinny.ForEach(u => members.Add(u.Id));
 
                     if (modType == ObjectModificationType.Update)
                     {

@@ -46,8 +46,8 @@
     <Reference Include="Lithnet.Ecma2Framework, Version=1.0.6714.35667, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\Lithnet.Ecma2Framework.1.0.6714.35667\lib\net461\Lithnet.Ecma2Framework.dll</HintPath>
     </Reference>
-    <Reference Include="Lithnet.MetadirectoryServices, Version=1.0.6478.33562, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Lithnet.MetadirectoryServices.1.0.6478.33562\lib\net40\Lithnet.MetadirectoryServices.dll</HintPath>
+    <Reference Include="Lithnet.MetadirectoryServices, Version=1.0.6718.23018, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Lithnet.MetadirectoryServices.1.0.6718.23018\lib\net461\Lithnet.MetadirectoryServices.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=2.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.2.0.0\lib\netstandard2.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
@@ -113,6 +113,7 @@
   <ItemGroup>
     <Compile Include="ConfigParameterNames.cs" />
     <Compile Include="Providers\CapabilitiesProvider.cs" />
+    <Compile Include="Providers\Group\GroupExportProvider.cs" />
     <Compile Include="Providers\User\UserPasswordProvider.cs" />
     <Compile Include="Providers\ConfigParametersProvider.cs" />
     <Compile Include="OktaMAConfigSection.cs" />
