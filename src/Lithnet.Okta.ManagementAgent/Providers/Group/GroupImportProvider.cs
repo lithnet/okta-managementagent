@@ -50,7 +50,7 @@ namespace Lithnet.Okta.ManagementAgent
                         }
                     }
 
-                    CSEntryChange c = this.GroupToCSEntryChange(context.InDelta, type, group);
+                    CSEntryChange c = this.GroupToCSEntryChange(context, type, group);
                     if (c != null)
                     {
                         context.ImportItems.Add(c, context.CancellationTokenSource.Token);
@@ -95,12 +95,12 @@ namespace Lithnet.Okta.ManagementAgent
             context.OutgoingWatermark.Add(new Watermark(GroupMemberUpdateKey, wmv, "DateTime"));
         }
 
-        private CSEntryChange GroupToCSEntryChange(bool inDelta, SchemaType schemaType, IGroup group)
+        private CSEntryChange GroupToCSEntryChange(ImportContext context, SchemaType schemaType, IGroup group)
         {
             Resource profile = group.GetProperty<Resource>("profile");
             logger.Trace($"Creating CSEntryChange for group {group.Id}");
 
-            ObjectModificationType modType = this.GetObjectModificationType(group, inDelta);
+            ObjectModificationType modType = this.GetObjectModificationType(group, context.InDelta);
 
             if (modType == ObjectModificationType.None)
             {
@@ -124,7 +124,7 @@ namespace Lithnet.Okta.ManagementAgent
                 {
                     IList<object> members = new List<object>();
 
-                    group.UsersSkinny.ForEach(u => members.Add(u.Id));
+                    ((OktaConnectionContext) context.ConnectionContext).Client.GetCollection<User>($"/api/v1/groups/{group.Id}/skinny_users").ForEach(u => members.Add(u.Id));
 
                     if (modType == ObjectModificationType.Update)
                     {
