@@ -27,6 +27,8 @@ namespace Lithnet.Okta.ManagementAgent
 
             logger.Info($"Setting up connection to {configParameters[ConfigParameterNames.TenantUrl].Value}");
 
+            System.Net.ServicePointManager.DefaultConnectionLimit = OktaMAConfigSection.Configuration.ConnectionLimit;
+
             OktaClientConfiguration oktaConfig = new OktaClientConfiguration
             {
                 OrgUrl = configParameters[ConfigParameterNames.TenantUrl].Value,

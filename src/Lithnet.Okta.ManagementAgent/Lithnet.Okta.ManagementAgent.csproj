@@ -1,5 +1,6 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <Project ToolsVersion="15.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+  <Import Project="..\packages\ILRepack.2.0.15\build\ILRepack.props" Condition="Exists('..\packages\ILRepack.2.0.15\build\ILRepack.props')" />
   <Import Project="$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props" Condition="Exists('$(MSBuildExtensionsPath)\$(MSBuildToolsVersion)\Microsoft.Common.props')" />
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -43,11 +44,11 @@
     <Reference Include="FlexibleConfiguration, Version=1.2.1.0, Culture=neutral, processorArchitecture=MSIL">
       <HintPath>..\packages\FlexibleConfiguration.1.2.1\lib\net45\FlexibleConfiguration.dll</HintPath>
     </Reference>
-    <Reference Include="Lithnet.Ecma2Framework, Version=1.0.6714.35667, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Lithnet.Ecma2Framework.1.0.6714.35667\lib\net461\Lithnet.Ecma2Framework.dll</HintPath>
+    <Reference Include="Lithnet.Ecma2Framework, Version=1.0.6730.23158, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Lithnet.Ecma2Framework.1.0.6730.23158\lib\net461\Lithnet.Ecma2Framework.dll</HintPath>
     </Reference>
-    <Reference Include="Lithnet.MetadirectoryServices, Version=1.0.6718.23018, Culture=neutral, processorArchitecture=MSIL">
-      <HintPath>..\packages\Lithnet.MetadirectoryServices.1.0.6718.23018\lib\net461\Lithnet.MetadirectoryServices.dll</HintPath>
+    <Reference Include="Lithnet.MetadirectoryServices, Version=1.0.6730.35901, Culture=neutral, processorArchitecture=MSIL">
+      <HintPath>..\packages\Lithnet.MetadirectoryServices.1.0.6730.35901\lib\net461\Lithnet.MetadirectoryServices.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Extensions.DependencyInjection.Abstractions, Version=2.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Extensions.DependencyInjection.Abstractions.2.0.0\lib\netstandard2.0\Microsoft.Extensions.DependencyInjection.Abstractions.dll</HintPath>
@@ -111,6 +112,7 @@
     </Reference>
   </ItemGroup>
   <ItemGroup>
+    <Compile Include="AsyncHelper.cs" />
     <Compile Include="ConfigParameterNames.cs" />
     <Compile Include="Providers\CapabilitiesProvider.cs" />
     <Compile Include="Providers\Group\GroupExportProvider.cs" />
@@ -131,7 +133,9 @@
   </ItemGroup>
   <ItemGroup>
     <Content Include="ExportedMA.xml" />
-    <Content Include="FodyWeavers.xml" />
+    <Content Include="FodyWeavers.xml">
+      <SubType>Designer</SubType>
+    </Content>
     <Content Include="Lithnet.Okta.ManagementAgent.PackagedMA.xml" />
     <Content Include="MAPackageInformation.xml" />
   </ItemGroup>
@@ -144,11 +148,13 @@
     </PropertyGroup>
     <Error Condition="!Exists('..\packages\Fody.3.0.3\build\Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Fody.3.0.3\build\Fody.targets'))" />
     <Error Condition="!Exists('..\packages\Costura.Fody.2.0.1\build\Costura.Fody.targets')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\Costura.Fody.2.0.1\build\Costura.Fody.targets'))" />
+    <Error Condition="!Exists('..\packages\ILRepack.2.0.15\build\ILRepack.props')" Text="$([System.String]::Format('$(ErrorText)', '..\packages\ILRepack.2.0.15\build\ILRepack.props'))" />
   </Target>
   <Import Project="..\packages\Costura.Fody.2.0.1\build\Costura.Fody.targets" Condition="Exists('..\packages\Costura.Fody.2.0.1\build\Costura.Fody.targets')" />
   <PropertyGroup>
     <PostBuildEvent>if not exist "$(TargetDir)merged" mkdir "$(TargetDir)merged"
-$(SolutionDir)\packages\ILMerge.2.14.1208\tools\ILMerge.exe /wildcards /targetplatform:"v4,C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0" /out:$(TargetDir)merged\$(TargetName).dll $(TargetDir)$(TargetName).dll Lithnet.Ecma2Framework.dll
+REM $(SolutionDir)\packages\ILMerge.2.14.1208\tools\ILMerge.exe /targetplatform:"v4,C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0" /out:$(TargetDir)merged\$(TargetName).dll $(TargetDir)$(TargetName).dll Lithnet.Ecma2Framework.dll
+$(SolutionDir)\packages\ILRepack.2.0.15\tools\ILRepack.exe /targetplatform:"v4,C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0" /out:$(TargetDir)merged\$(TargetName).dll $(TargetDir)$(TargetName).dll Lithnet.Ecma2Framework.dll
 del "$(TargetDir)*" /Q
 move /Y "$(TargetDir)merged\*" "$(TargetDir)"
 rmdir "$(TargetDir)merged"
