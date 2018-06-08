@@ -12,7 +12,7 @@ namespace Lithnet.Okta.ManagementAgent
 {
     internal class UserExportProvider : IObjectExportProvider
     {
-        private static Logger logger = LogManager.GetCurrentClassLogger();
+        private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 
         public bool CanExport(CSEntryChange csentry)
         {
@@ -37,10 +37,10 @@ namespace Lithnet.Okta.ManagementAgent
                 case ObjectModificationType.Update:
                     return this.PutCSEntryChangeUpdate(csentry, context);
 
-                default:
+                case ObjectModificationType.Unconfigured:
                 case ObjectModificationType.None:
                 case ObjectModificationType.Replace:
-                case ObjectModificationType.Unconfigured:
+                default:
                     throw new InvalidOperationException($"Unknown or unsupported modification type: {csentry.ObjectModificationType} on object {csentry.DN}");
             }
         }
@@ -74,7 +74,6 @@ namespace Lithnet.Okta.ManagementAgent
                 {
                     provider.Type = new AuthenticationProviderType(change.GetValueAdd<string>());
                     logger.Info($"Set {change.Name} to {provider.Type ?? "<null>"}");
-
                 }
                 else if (change.Name == "provider.name")
                 {
@@ -149,9 +148,10 @@ namespace Lithnet.Okta.ManagementAgent
             bool partial = true;
 
             if (csentry.AttributeChanges.Any(t =>
-                    (t.DataType == AttributeType.Reference && t.IsMultiValued)
-                    || t.ModificationType == AttributeModificationType.Delete
-                    || t.Name == "suspended"))
+                    t.ModificationType == AttributeModificationType.Delete
+                    || t.Name == "suspended"
+                    || t.DataType == AttributeType.Reference // this should only need to include MV attributes, but there's an issue where MIM sends an attribute update with a value delete for a single valued ref that it doesn't know about
+                ))
             {
                 logger.Trace($"Getting user {csentry.DN} for FULL update");
                 user = AsyncHelper.RunSync(() => client.Users.GetUserAsync(csentry.DN, context.CancellationTokenSource.Token));
@@ -215,7 +215,6 @@ namespace Lithnet.Okta.ManagementAgent
             {
                 AsyncHelper.RunSync(() => client.Users.UpdateUserAsync(user, csentry.DN, context.CancellationTokenSource.Token));
             }
-
 
             return CSEntryChangeResult.Create(csentry.Identifier, null, MAExportError.Success);
         }
