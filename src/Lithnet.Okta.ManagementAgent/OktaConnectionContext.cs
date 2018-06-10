@@ -1,10 +1,13 @@
-﻿using System.Collections.ObjectModel;
+﻿using System;
+using System.Collections.ObjectModel;
+using System.Net.Http;
 using Lithnet.Ecma2Framework;
 using Lithnet.MetadirectoryServices;
 using Microsoft.MetadirectoryServices;
 using NLog;
 using Okta.Sdk;
 using Okta.Sdk.Configuration;
+using Okta.Sdk.Internal;
 using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace Lithnet.Okta.ManagementAgent
@@ -28,6 +31,10 @@ namespace Lithnet.Okta.ManagementAgent
             logger.Info($"Setting up connection to {configParameters[ConfigParameterNames.TenantUrl].Value}");
 
             System.Net.ServicePointManager.DefaultConnectionLimit = OktaMAConfigSection.Configuration.ConnectionLimit;
+            GlobalSettings.ExportThreadCount = OktaMAConfigSection.Configuration.ExportThreads;
+
+            NLog.Extensions.Logging.NLogLoggerProvider f = new NLog.Extensions.Logging.NLogLoggerProvider();
+            ILogger nlogger = f.CreateLogger("ext-logger");
 
             OktaClientConfiguration oktaConfig = new OktaClientConfiguration
             {
@@ -40,18 +47,44 @@ namespace Lithnet.Okta.ManagementAgent
             if (OktaMAConfigSection.Configuration.HttpDebugEnabled)
             {
                 logger.Warn("WARNING: HTTPS Debugging enabled. Service certificate validation is disabled");
-                oktaConfig.DisableServerCertificateValidation = true;
+
+                HttpClient httpClient = OktaConnectionContext.CreateDebugHttpClient(nlogger, oktaConfig);
+
+                return new OktaConnectionContext()
+                {
+                    Client = new OktaClient(oktaConfig, httpClient, nlogger),
+                };
             }
-
-            GlobalSettings.ExportThreadCount = OktaMAConfigSection.Configuration.ExportThreads;
-
-            NLog.Extensions.Logging.NLogLoggerProvider f = new NLog.Extensions.Logging.NLogLoggerProvider();
-            ILogger nlogger = f.CreateLogger("ext-logger");
 
             return new OktaConnectionContext()
             {
                 Client = new OktaClient(oktaConfig, nlogger),
             };
+        }
+
+        private static HttpClient CreateDebugHttpClient(ILogger nlogger, OktaClientConfiguration oktaConfig)
+        {
+            HttpClientHandler handler = new HttpClientHandler
+            {
+                AllowAutoRedirect = false,
+                ServerCertificateCustomValidationCallback = (httpRequestMessage, x509Certificate2, x509Chain, sslPolicyErrors) => true,
+            };
+
+            if (oktaConfig.Proxy != null)
+            {
+                handler.Proxy = new DefaultProxy(oktaConfig.Proxy, nlogger);
+            }
+
+            HttpClient httpClient = new HttpClient(handler, true)
+            {
+                Timeout = TimeSpan.FromSeconds(oktaConfig.ConnectionTimeout ?? OktaClientConfiguration.DefaultConnectionTimeout),
+            };
+
+            OktaConnectionContext.logger.Trace($"Using timeout of {httpClient.Timeout} second(s) from configuration");
+
+            // Workaround for https://github.com/dotnet/corefx/issues/11224
+            httpClient.DefaultRequestHeaders.Add("Connection", "close");
+            return httpClient;
         }
     }
 }
