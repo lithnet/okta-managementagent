@@ -19,9 +19,19 @@ namespace Lithnet.Okta.ManagementAgent
             return factory.StartNew(func).Unwrap().GetAwaiter().GetResult();
         }
 
+        public static TResult RunSync<TResult>(Func<Task<TResult>> func, CancellationToken token)
+        {
+            return factory.StartNew(func, token).Unwrap().GetAwaiter().GetResult();
+        }
+
         public static void RunSync(Func<Task> func)
         {
             factory.StartNew(func).Unwrap().GetAwaiter().GetResult();
+        }
+
+        public static void RunSync(Func<Task> func, CancellationToken token)
+        {
+            factory.StartNew(func, token).Unwrap().GetAwaiter().GetResult();
         }
     }
 }

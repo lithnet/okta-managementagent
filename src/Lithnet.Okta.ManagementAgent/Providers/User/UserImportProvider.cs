@@ -9,60 +9,34 @@ using Lithnet.MetadirectoryServices;
 using Microsoft.MetadirectoryServices;
 using NLog;
 using Okta.Sdk;
+using System.Collections.Concurrent;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    internal  class UserImportProvider : IObjectImportProvider
+    internal class UserImportProvider : IObjectImportProvider
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
         public void GetCSEntryChanges(ImportContext context, SchemaType type)
         {
-            ParallelOptions options = new ParallelOptions { CancellationToken = context.CancellationTokenSource.Token };
+            AsyncHelper.RunSync(() => this.GetCSEntryChangesAsync(context, type), context.CancellationTokenSource.Token);
+        }
 
-            if (Debugger.IsAttached)
-            {
-                options.MaxDegreeOfParallelism = 1;
-            }
-
-            object syncObject = new object();
-            long userHighestTicks = 0;
-
+        private async Task GetCSEntryChangesAsync(ImportContext context, SchemaType type)
+        {
             IAsyncEnumerable<IUser> users = this.GetUserEnumerable(context.InDelta, context.IncomingWatermark, ((OktaConnectionContext)context.ConnectionContext).Client);
+            BlockingCollection<IUser> queue = new BlockingCollection<IUser>();
 
-            Parallel.ForEach<IUser>(users.ToEnumerable(), options, (user) =>
-            {
-                try
-                {
-                    if (user.LastUpdated.HasValue)
-                    {
-                        lock (syncObject)
-                        {
-                            userHighestTicks = Math.Max(userHighestTicks, user.LastUpdated.Value.Ticks);
-                        }
-                    }
+            Task<long> consumerTask = Task.Run<long>(() => this.ConsumeUserObjects(context, type, queue), context.CancellationTokenSource.Token);
 
-                    CSEntryChange c = this.UserToCSEntryChange(context.InDelta, type, user);
-                    if (c != null)
-                    {
-                        context.ImportItems.Add(c, context.CancellationTokenSource.Token);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    logger.Error(ex);
-                    CSEntryChange csentry = CSEntryChange.Create();
-                    csentry.DN = user.Id;
-                    csentry.ErrorCodeImport = MAImportError.ImportErrorCustomContinueRun;
-                    csentry.ErrorDetail = ex.StackTrace;
-                    csentry.ErrorName = ex.Message;
-                    context.ImportItems.Add(csentry, context.CancellationTokenSource.Token);
-                }
+            await users.ForEachAsync(t => queue.Add(t)).ConfigureAwait(false);
 
-                options.CancellationToken.ThrowIfCancellationRequested();
-            });
+            queue.CompleteAdding();
 
             string wmv;
+
+            consumerTask.Wait(context.CancellationTokenSource.Token);
+            long userHighestTicks = consumerTask.Result;
 
             if (userHighestTicks <= 0)
             {
@@ -76,7 +50,60 @@ namespace Lithnet.Okta.ManagementAgent
             context.OutgoingWatermark.Add(new Watermark("users", wmv, "DateTime"));
         }
 
-        private CSEntryChange UserToCSEntryChange(bool inDelta, SchemaType schemaType, IUser user)
+        private long ConsumeUserObjects(ImportContext context, SchemaType type, BlockingCollection<IUser> producer)
+        {
+            ParallelOptions options = new ParallelOptions { CancellationToken = context.CancellationTokenSource.Token };
+
+            if (Debugger.IsAttached)
+            {
+                options.MaxDegreeOfParallelism = 1;
+            }
+            else
+            {
+                options.MaxDegreeOfParallelism = OktaMAConfigSection.Configuration.ImportThreads;
+            }
+
+            object syncObject = new object();
+            long userHighestTicks = 0;
+
+            Parallel.ForEach<IUser>(producer.GetConsumingEnumerable(), options, user =>
+            {
+                try
+                {
+                    if (user.LastUpdated.HasValue)
+                    {
+                        lock (syncObject)
+                        {
+                            userHighestTicks = Math.Max(userHighestTicks, user.LastUpdated.Value.Ticks);
+                        }
+                    }
+
+                    CSEntryChange c = AsyncHelper.RunSync(() => this.UserToCSEntryChange(context.InDelta, type, user, context));
+
+                    if (c != null)
+                    {
+                        context.ImportItems.Add(c, context.CancellationTokenSource.Token);
+                    }
+                }
+                catch (Exception ex)
+                {
+                    UserImportProvider.logger.Error(ex);
+                    CSEntryChange csentry = CSEntryChange.Create();
+                    csentry.DN = user.Id;
+                    csentry.ErrorCodeImport = MAImportError.ImportErrorCustomContinueRun;
+                    csentry.ErrorDetail = ex.StackTrace;
+                    csentry.ErrorName = ex.Message;
+                    context.ImportItems.Add(csentry, context.CancellationTokenSource.Token);
+                }
+
+                options.CancellationToken.ThrowIfCancellationRequested();
+            });
+
+            return userHighestTicks;
+        }
+
+
+        private async Task<CSEntryChange> UserToCSEntryChange(bool inDelta, SchemaType schemaType, IUser user, ImportContext context)
         {
             Resource profile = user.GetProperty<Resource>("profile");
             string login = profile.GetProperty<string>("login");
@@ -114,6 +141,37 @@ namespace Lithnet.Okta.ManagementAgent
                         c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, user.Status == UserStatus.Suspended));
                         continue;
                     }
+                    else if (type.Name == "enrolledFactors")
+                    {
+
+                        List<object> items = new List<object>();
+                        foreach (IFactor factor in await user.ListFactors().ToList().ConfigureAwait(false))
+                        {
+                            items.Add($"{factor.Provider}/{factor.FactorType}");
+                        }
+
+                        if (items.Count > 0)
+                        {
+                            c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, items));
+                        }
+
+                        continue;
+                    }
+                    else if (type.Name == "availableFactors")
+                    {
+                        List<object> items = new List<object>();
+                        foreach (IFactor factor in await user.ListSupportedFactors().ToList().ConfigureAwait(false))
+                        {
+                            items.Add($"{factor.Provider}/{factor.FactorType}");
+                        }
+
+                        if (items.Count > 0)
+                        {
+                            c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, items));
+                        }
+
+                        continue;
+                    }
 
                     object value = user.GetProperty<object>(type.Name) ?? profile.GetProperty<object>(type.Name);
 
@@ -123,7 +181,7 @@ namespace Lithnet.Okta.ManagementAgent
                         {
                             IList<object> values = new List<object>();
 
-                            foreach (var item in list)
+                            foreach (object item in list)
                             {
                                 values.Add(TypeConverter.ConvertData(item, type.DataType));
                             }

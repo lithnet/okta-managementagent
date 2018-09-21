@@ -8,6 +8,7 @@ namespace Lithnet.Okta.ManagementAgent
         private const string PropHttpDebugEnabled = "http-debug-enabled";
         private const string PropProxyUrl = "proxy-url";
         private const string PropExportThreads = "export-threads";
+        private const string PropImportThreads = "import-threads";
         private const string PropConnectionLimit = "connection-limit";
         private const string PropHttpClientTimeout = "http-client-timeout";
 
@@ -38,7 +39,10 @@ namespace Lithnet.Okta.ManagementAgent
 
         [ConfigurationProperty(OktaMAConfigSection.PropExportThreads, IsRequired = false, DefaultValue = 30)]
         public int ExportThreads => (int)this[OktaMAConfigSection.PropExportThreads];
-        
+
+        [ConfigurationProperty(OktaMAConfigSection.PropImportThreads, IsRequired = false, DefaultValue = 10)]
+        public int ImportThreads => (int)this[OktaMAConfigSection.PropImportThreads];
+
         [ConfigurationProperty(OktaMAConfigSection.PropConnectionLimit, IsRequired = false, DefaultValue = 1000)]
         public int ConnectionLimit => (int)this[OktaMAConfigSection.PropConnectionLimit];
 

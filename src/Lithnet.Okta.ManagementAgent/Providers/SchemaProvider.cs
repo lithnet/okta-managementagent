@@ -89,6 +89,12 @@ namespace Lithnet.Okta.ManagementAgent
             mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("provider.name", AttributeType.String, AttributeOperation.ImportOnly);
             mmsType.Attributes.Add(mmsAttribute);
 
+            mmsAttribute = SchemaAttribute.CreateMultiValuedAttribute("enrolledFactors", AttributeType.String, AttributeOperation.ImportOnly);
+            mmsType.Attributes.Add(mmsAttribute);
+
+            mmsAttribute = SchemaAttribute.CreateMultiValuedAttribute("availableFactors", AttributeType.String, AttributeOperation.ImportOnly);
+            mmsType.Attributes.Add(mmsAttribute);
+
             mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("suspended", AttributeType.Boolean, AttributeOperation.ImportExport);
             mmsType.Attributes.Add(mmsAttribute);
             
