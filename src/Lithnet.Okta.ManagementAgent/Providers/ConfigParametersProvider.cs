@@ -25,6 +25,7 @@ namespace Lithnet.Okta.ManagementAgent
                     configParametersDefinitions.Add(ConfigParameterDefinition.CreateDividerParameter());
                     configParametersDefinitions.Add(ConfigParameterDefinition.CreateDropDownParameter(ConfigParameterNames.UserDeprovisioningAction, new string[] { "Delete", "Deactivate" }, false, "Deactivate"));
                     configParametersDefinitions.Add(ConfigParameterDefinition.CreateCheckBoxParameter(ConfigParameterNames.ActivateNewUsers, false));
+                    configParametersDefinitions.Add(ConfigParameterDefinition.CreateCheckBoxParameter(ConfigParameterNames.SendActivationEmailToNewUsers, false));
 
                     break;
 

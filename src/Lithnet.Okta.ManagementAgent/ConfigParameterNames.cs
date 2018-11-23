@@ -20,5 +20,7 @@ namespace Lithnet.Okta.ManagementAgent
         internal static readonly string UserDeprovisioningAction = "User deprovisioning action";
 
         internal static readonly string ActivateNewUsers = "Activate new users";
+
+        internal static readonly string SendActivationEmailToNewUsers = "Send activation email to new users";
     }
 }

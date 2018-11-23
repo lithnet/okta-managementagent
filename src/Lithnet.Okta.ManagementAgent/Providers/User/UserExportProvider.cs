@@ -110,7 +110,7 @@ namespace Lithnet.Okta.ManagementAgent
                 CreateUserWithPasswordOptions options = new CreateUserWithPasswordOptions()
                 {
                     Password = newPassword,
-                    Activate = context.ConfigParameters[ConfigParameterNames.ActivateNewUsers].Value == "1",
+                    Activate = false,
                     Profile = profile
                 };
 
@@ -123,10 +123,16 @@ namespace Lithnet.Okta.ManagementAgent
                     Profile = profile,
                     ProviderName = provider.Name,
                     ProviderType = provider.Type,
-                    Activate = context.ConfigParameters[ConfigParameterNames.ActivateNewUsers].Value == "1"
+                    Activate = false
                 };
 
                 result = AsyncHelper.RunSync(() => client.Users.CreateUserAsync(options, context.CancellationTokenSource.Token));
+            }
+
+            if (context.ConfigParameters[ConfigParameterNames.ActivateNewUsers].Value == "1")
+            {
+                bool sendEmail = context.ConfigParameters[ConfigParameterNames.SendActivationEmailToNewUsers].Value == "1";
+                AsyncHelper.RunSync(() => client.Users.ActivateUserAsync(result.Id, sendEmail, context.CancellationTokenSource.Token));
             }
 
             if (suspend)
