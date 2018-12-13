@@ -24,7 +24,7 @@ namespace Lithnet.Okta.ManagementAgent
 
         private async Task GetCSEntryChangesAsync(ImportContext context, SchemaType type)
         {
-            IAsyncEnumerable<IUser> users = this.GetUserEnumerable(context.InDelta, context.IncomingWatermark, ((OktaConnectionContext)context.ConnectionContext).Client);
+            IAsyncEnumerable<IUser> users = this.GetUserEnumerable(context.InDelta, context.IncomingWatermark, ((OktaConnectionContext)context.ConnectionContext).Client, context);
             BlockingCollection<IUser> queue = new BlockingCollection<IUser>();
 
             Task<long> consumerTask = Task.Run<long>(() => this.ConsumeUserObjects(context, type, queue), context.CancellationTokenSource.Token);
@@ -102,14 +102,13 @@ namespace Lithnet.Okta.ManagementAgent
             return userHighestTicks;
         }
 
-
         private async Task<CSEntryChange> UserToCSEntryChange(bool inDelta, SchemaType schemaType, IUser user, ImportContext context)
         {
             Resource profile = user.GetProperty<Resource>("profile");
             string login = profile.GetProperty<string>("login");
             logger.Trace($"Creating CSEntryChange for {user.Id}/{login}");
 
-            ObjectModificationType modType = this.GetObjectModificationType(user, inDelta);
+            ObjectModificationType modType = this.GetObjectModificationType(user, inDelta, context);
 
             if (modType == ObjectModificationType.None)
             {
@@ -199,7 +198,7 @@ namespace Lithnet.Okta.ManagementAgent
             return c;
         }
 
-        private IAsyncEnumerable<IUser> GetUserEnumerable(bool inDelta, WatermarkKeyedCollection importState, IOktaClient client)
+        private IAsyncEnumerable<IUser> GetUserEnumerable(bool inDelta, WatermarkKeyedCollection importState, IOktaClient client, ImportContext context)
         {
             IAsyncEnumerable<IUser> users;
 
@@ -219,39 +218,57 @@ namespace Lithnet.Okta.ManagementAgent
                 long ticks = long.Parse(value);
                 DateTime dt = new DateTime(ticks);
 
-                string filter = $"lastUpdated gt \"{dt.ToSmartString()}Z\"";
+                string filter = $"(lastUpdated gt \"{dt.ToSmartString()}Z\")";
+
+                if (context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value == "Delete")
+                {
+                    filter += " and(status eq \"LOCKED_OUT\" or status eq \"RECOVERY\" or status eq \"STAGED\" or status eq \"PROVISIONED\" or status eq \"ACTIVE\" or status eq \"PASSWORD_EXPIRED\" or status eq \"DEPROVISIONED\")";
+                }
 
                 users = client.Users.ListUsers(null, null, 200, filter);
             }
             else
             {
-                users = client.Users.ListUsers(null, null, 200);
+                string filter = null;
+
+                if (context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value == "Delete")
+                {
+                    filter = "(status eq \"LOCKED_OUT\" or status eq \"RECOVERY\" or status eq \"STAGED\" or status eq \"PROVISIONED\" or status eq \"ACTIVE\" or status eq \"PASSWORD_EXPIRED\" or status eq \"DEPROVISIONED\")";
+                }
+
+                users = client.Users.ListUsers(null, null, 200, filter);
             }
 
             return users;
         }
 
-        private ObjectModificationType GetObjectModificationType(IUser user, bool inDelta)
+        private ObjectModificationType GetObjectModificationType(IUser user, bool inDelta, ImportContext context)
         {
             if (!inDelta)
             {
-                if ((user.Status?.Value == UserStatus.Deprovisioned ||
-                     user.TransitioningToStatus?.Value == UserStatus.Deprovisioned) &&
-                    user.TransitioningToStatus?.Value != UserStatus.Provisioned)
+                if (context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value != "Delete")
                 {
+                    if ((user.Status?.Value == UserStatus.Deprovisioned ||
+                         user.TransitioningToStatus?.Value == UserStatus.Deprovisioned) &&
+                        user.TransitioningToStatus?.Value != UserStatus.Provisioned)
+                    {
 
-                    logger.Trace($"Discarding {user.Id} as status is deprovisioned");
-                    return ObjectModificationType.None;
+                        logger.Trace($"Discarding {user.Id} as status is deprovisioned");
+                        return ObjectModificationType.None;
+                    }
                 }
 
                 return ObjectModificationType.Add;
             }
 
-            if ((user.Status?.Value == UserStatus.Deprovisioned ||
-                 user.TransitioningToStatus?.Value == UserStatus.Deprovisioned) &&
-                user.TransitioningToStatus?.Value != UserStatus.Provisioned)
+            if (context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value != "Delete")
             {
-                return ObjectModificationType.Delete;
+                if ((user.Status?.Value == UserStatus.Deprovisioned ||
+                     user.TransitioningToStatus?.Value == UserStatus.Deprovisioned) &&
+                    user.TransitioningToStatus?.Value != UserStatus.Provisioned)
+                {
+                    return ObjectModificationType.Delete;
+                }
             }
 
             return ObjectModificationType.Replace;
