@@ -108,7 +108,7 @@ namespace Lithnet.Okta.ManagementAgent
 
         public static IEnumerable<SchemaAttribute> GetSchemaJson(IOktaClient client)
         {
-            Resource result = AsyncHelper.RunSync(() => client.GetAsync<Resource>(
+            Resource result = AsyncHelper.RunSync(client.GetAsync<Resource>(
                 new HttpRequest
                 {
                     Uri = "/api/v1/meta/schemas/user/default",

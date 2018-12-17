@@ -47,7 +47,7 @@ namespace Lithnet.Okta.ManagementAgent
         {
             IOktaClient client = ((OktaConnectionContext)context.ConnectionContext).Client;
 
-            AsyncHelper.RunSync(() => client.Groups.DeleteGroupAsync(csentry.DN, context.CancellationTokenSource.Token));
+            AsyncHelper.RunSync(client.Groups.DeleteGroupAsync(csentry.DN, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
 
             return CSEntryChangeResult.Create(csentry.Identifier, null, MAExportError.Success);
         }
@@ -74,11 +74,11 @@ namespace Lithnet.Okta.ManagementAgent
             }
 
             IOktaClient client = ((OktaConnectionContext)context.ConnectionContext).Client;
-            IGroup result = AsyncHelper.RunSync(() => client.Groups.CreateGroupAsync(options, context.CancellationTokenSource.Token));
+            IGroup result = AsyncHelper.RunSync(client.Groups.CreateGroupAsync(options, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
 
             foreach (string member in members)
             {
-                AsyncHelper.RunSync(() => client.Groups.AddUserToGroupAsync(result.Id, member, context.CancellationTokenSource.Token));
+                AsyncHelper.RunSync(client.Groups.AddUserToGroupAsync(result.Id, member, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
             }
 
             List<AttributeChange> anchorChanges = new List<AttributeChange>();
@@ -99,7 +99,7 @@ namespace Lithnet.Okta.ManagementAgent
                 {
                     if (group == null)
                     {
-                        group = AsyncHelper.RunSync(() => client.Groups.GetGroupAsync(csentry.DN, null, context.CancellationTokenSource.Token));
+                        group = AsyncHelper.RunSync(client.Groups.GetGroupAsync(csentry.DN, null, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
                     }
 
                     group.Profile.Name = change.GetValueAdd<string>();
@@ -108,7 +108,7 @@ namespace Lithnet.Okta.ManagementAgent
                 {
                     if (group == null)
                     {
-                        group = AsyncHelper.RunSync(() => client.Groups.GetGroupAsync(csentry.DN, null, context.CancellationTokenSource.Token));
+                        group = AsyncHelper.RunSync(client.Groups.GetGroupAsync(csentry.DN, null, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
                     }
 
                     group.Profile.Description = change.GetValueAdd<string>();
@@ -117,19 +117,19 @@ namespace Lithnet.Okta.ManagementAgent
                 {
                     foreach (string add in change.GetValueAdds<string>())
                     {
-                        AsyncHelper.RunSync(() => client.Groups.AddUserToGroupAsync(csentry.DN, add, context.CancellationTokenSource.Token));
+                        AsyncHelper.RunSync(client.Groups.AddUserToGroupAsync(csentry.DN, add, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
                     }
 
                     foreach (string delete in change.GetValueDeletes<string>())
                     {
-                        AsyncHelper.RunSync(() => client.Groups.RemoveGroupUserAsync(csentry.DN, delete, context.CancellationTokenSource.Token));
+                        AsyncHelper.RunSync(client.Groups.RemoveGroupUserAsync(csentry.DN, delete, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
                     }
                 }
             }
 
             if (group != null)
             {
-                AsyncHelper.RunSync(() => client.Groups.UpdateGroupAsync(group, csentry.DN, context.CancellationTokenSource.Token));
+                AsyncHelper.RunSync(client.Groups.UpdateGroupAsync(group, csentry.DN, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
             }
 
             return CSEntryChangeResult.Create(csentry.Identifier, null, MAExportError.Success);

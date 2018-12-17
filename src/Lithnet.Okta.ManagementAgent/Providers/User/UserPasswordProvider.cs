@@ -26,12 +26,12 @@ namespace Lithnet.Okta.ManagementAgent
                 }
             };
 
-            AsyncHelper.RunSync(() => ((OktaConnectionContext) context.ConnectionContext).Client.Users.UpdateUserAsync(u, csentry.DN.ToString()));
+            AsyncHelper.RunSync(((OktaConnectionContext) context.ConnectionContext).Client.Users.UpdateUserAsync(u, csentry.DN.ToString()));
         }
 
         public void ChangePassword(CSEntry csentry, SecureString oldPassword, SecureString newPassword, PasswordContext context)
         {
-            AsyncHelper.RunSync(() => ((OktaConnectionContext) context.ConnectionContext).Client.Users.ChangePasswordAsync(csentry.DN.ToString(),
+            AsyncHelper.RunSync(((OktaConnectionContext) context.ConnectionContext).Client.Users.ChangePasswordAsync(csentry.DN.ToString(),
                 new ChangePasswordOptions()
                 {
                     NewPassword = newPassword.ConvertToUnsecureString(),

@@ -49,11 +49,11 @@ namespace Lithnet.Okta.ManagementAgent
         {
             IOktaClient client = ((OktaConnectionContext)context.ConnectionContext).Client;
 
-            AsyncHelper.RunSync(() => client.Users.DeactivateUserAsync(csentry.DN, context.CancellationTokenSource.Token));
+            AsyncHelper.RunSync(client.Users.DeactivateUserAsync(csentry.DN, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
 
             if (context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value == "Delete")
             {
-                AsyncHelper.RunSync(() => client.Users.DeactivateOrDeleteUserAsync(csentry.DN, context.CancellationTokenSource.Token));
+                AsyncHelper.RunSync(client.Users.DeactivateOrDeleteUserAsync(csentry.DN, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
             }
 
             return CSEntryChangeResult.Create(csentry.Identifier, null, MAExportError.Success);
@@ -114,7 +114,7 @@ namespace Lithnet.Okta.ManagementAgent
                     Profile = profile
                 };
 
-                result = AsyncHelper.RunSync(() => client.Users.CreateUserAsync(options, context.CancellationTokenSource.Token));
+                result = AsyncHelper.RunSync(client.Users.CreateUserAsync(options, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
             }
             else
             {
@@ -126,18 +126,18 @@ namespace Lithnet.Okta.ManagementAgent
                     Activate = false
                 };
 
-                result = AsyncHelper.RunSync(() => client.Users.CreateUserAsync(options, context.CancellationTokenSource.Token));
+                result = AsyncHelper.RunSync(client.Users.CreateUserAsync(options, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
             }
 
             if (context.ConfigParameters[ConfigParameterNames.ActivateNewUsers].Value == "1")
             {
                 bool sendEmail = context.ConfigParameters[ConfigParameterNames.SendActivationEmailToNewUsers].Value == "1";
-                AsyncHelper.RunSync(() => client.Users.ActivateUserAsync(result.Id, sendEmail, context.CancellationTokenSource.Token));
+                AsyncHelper.RunSync(client.Users.ActivateUserAsync(result.Id, sendEmail, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
             }
 
             if (suspend)
             {
-                AsyncHelper.RunSync(() => result.SuspendAsync(context.CancellationTokenSource.Token));
+                AsyncHelper.RunSync(result.SuspendAsync(context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
             }
 
             List<AttributeChange> anchorChanges = new List<AttributeChange>();
@@ -160,7 +160,7 @@ namespace Lithnet.Okta.ManagementAgent
                 ))
             {
                 logger.Trace($"Getting user {csentry.DN} for FULL update");
-                user = AsyncHelper.RunSync(() => client.Users.GetUserAsync(csentry.DN, context.CancellationTokenSource.Token));
+                user = AsyncHelper.RunSync(client.Users.GetUserAsync(csentry.DN, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
                 partial = false;
             }
             else
@@ -187,12 +187,12 @@ namespace Lithnet.Okta.ManagementAgent
                     if (user.Status == UserStatus.Active && suspend)
                     {
                         logger.Info($"Suspending user {user.Id}");
-                        AsyncHelper.RunSync(() => user.SuspendAsync(context.CancellationTokenSource.Token));
+                        AsyncHelper.RunSync(user.SuspendAsync(context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
                     }
                     else if (user.Status == UserStatus.Suspended && !suspend)
                     {
                         logger.Info($"Unsuspending user {user.Id}");
-                        AsyncHelper.RunSync(() => user.UnsuspendAsync(context.CancellationTokenSource.Token));
+                        AsyncHelper.RunSync(user.UnsuspendAsync(context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
                     }
                 }
                 else
@@ -215,11 +215,11 @@ namespace Lithnet.Okta.ManagementAgent
 
             if (partial)
             {
-                AsyncHelper.RunSync(() => client.PostAsync<User>($"/api/v1/users/{csentry.DN}", user, context.CancellationTokenSource.Token));
+                AsyncHelper.RunSync(client.PostAsync<User>($"/api/v1/users/{csentry.DN}", user, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
             }
             else
             {
-                AsyncHelper.RunSync(() => client.Users.UpdateUserAsync(user, csentry.DN, context.CancellationTokenSource.Token));
+                AsyncHelper.RunSync(client.Users.UpdateUserAsync(user, csentry.DN, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
             }
 
             return CSEntryChangeResult.Create(csentry.Identifier, null, MAExportError.Success);
