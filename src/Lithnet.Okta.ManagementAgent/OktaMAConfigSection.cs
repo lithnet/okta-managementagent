@@ -9,6 +9,8 @@ namespace Lithnet.Okta.ManagementAgent
         private const string PropProxyUrl = "proxy-url";
         private const string PropExportThreads = "export-threads";
         private const string PropImportThreads = "import-threads";
+        private const string PropUserListPageSize = "user-list-page-size";
+        private const string PropGroupListPageSize = "group-list-page-size";
         private const string PropConnectionLimit = "connection-limit";
         private const string PropHttpClientTimeout = "http-client-timeout";
 
@@ -46,7 +48,13 @@ namespace Lithnet.Okta.ManagementAgent
         [ConfigurationProperty(OktaMAConfigSection.PropConnectionLimit, IsRequired = false, DefaultValue = 1000)]
         public int ConnectionLimit => (int)this[OktaMAConfigSection.PropConnectionLimit];
 
-        [ConfigurationProperty(OktaMAConfigSection.PropHttpClientTimeout, IsRequired = false, DefaultValue = 600)]
+        [ConfigurationProperty(OktaMAConfigSection.PropHttpClientTimeout, IsRequired = false, DefaultValue = 120)]
         public int HttpClientTimeout => (int)this[OktaMAConfigSection.PropHttpClientTimeout];
+
+        [ConfigurationProperty(OktaMAConfigSection.PropUserListPageSize, IsRequired = false, DefaultValue = 200)]
+        public int UserListPageSize => (int)this[OktaMAConfigSection.PropUserListPageSize];
+
+        [ConfigurationProperty(OktaMAConfigSection.PropGroupListPageSize, IsRequired = false, DefaultValue = -1)]
+        public int GroupListPageSize => (int)this[OktaMAConfigSection.PropGroupListPageSize];
     }
 }
