@@ -19,7 +19,7 @@ namespace Lithnet.Okta.ManagementAgent
 
         public void GetCSEntryChanges(ImportContext context, SchemaType type)
         {
-            AsyncHelper.RunSync(() => this.GetCSEntryChangesAsync(context, type), context.CancellationTokenSource.Token);
+            AsyncHelper.RunSync(this.GetCSEntryChangesAsync(context, type), context.CancellationTokenSource.Token);
         }
 
         private async Task GetCSEntryChangesAsync(ImportContext context, SchemaType type)
@@ -27,16 +27,15 @@ namespace Lithnet.Okta.ManagementAgent
             IAsyncEnumerable<IUser> users = this.GetUserEnumerable(context.InDelta, context.IncomingWatermark, ((OktaConnectionContext)context.ConnectionContext).Client, context);
             BlockingCollection<IUser> queue = new BlockingCollection<IUser>();
 
-            Task<long> consumerTask = Task.Run<long>(() => this.ConsumeUserObjects(context, type, queue), context.CancellationTokenSource.Token);
+            var consumerTask = Task.Run<long>(() => this.ConsumeUserObjects(context, type, queue), context.CancellationTokenSource.Token);
 
             await users.ForEachAsync(t => queue.Add(t)).ConfigureAwait(false);
 
             queue.CompleteAdding();
 
-            string wmv;
+            long userHighestTicks = await consumerTask.ConfigureAwait(false);
 
-            consumerTask.Wait(context.CancellationTokenSource.Token);
-            long userHighestTicks = consumerTask.Result;
+            string wmv;
 
             if (userHighestTicks <= 0)
             {
@@ -78,7 +77,7 @@ namespace Lithnet.Okta.ManagementAgent
                         }
                     }
 
-                    CSEntryChange c = AsyncHelper.RunSync(() => this.UserToCSEntryChange(context.InDelta, type, user, context));
+                    CSEntryChange c = AsyncHelper.RunSync(this.UserToCSEntryChange(context.InDelta, type, user, context), context.CancellationTokenSource.Token);
 
                     if (c != null)
                     {
@@ -225,7 +224,7 @@ namespace Lithnet.Okta.ManagementAgent
                     filter += " and(status eq \"LOCKED_OUT\" or status eq \"RECOVERY\" or status eq \"STAGED\" or status eq \"PROVISIONED\" or status eq \"ACTIVE\" or status eq \"PASSWORD_EXPIRED\" or status eq \"DEPROVISIONED\")";
                 }
 
-                users = client.Users.ListUsers(null, null, 200, filter);
+                users = client.Users.ListUsers(null, null, OktaMAConfigSection.Configuration.UserListPageSize, filter);
             }
             else
             {
@@ -236,7 +235,7 @@ namespace Lithnet.Okta.ManagementAgent
                     filter = "(status eq \"LOCKED_OUT\" or status eq \"RECOVERY\" or status eq \"STAGED\" or status eq \"PROVISIONED\" or status eq \"ACTIVE\" or status eq \"PASSWORD_EXPIRED\" or status eq \"DEPROVISIONED\")";
                 }
 
-                users = client.Users.ListUsers(null, null, 200, filter);
+                users = client.Users.ListUsers(null, null, OktaMAConfigSection.Configuration.UserListPageSize, filter);
             }
 
             return users;

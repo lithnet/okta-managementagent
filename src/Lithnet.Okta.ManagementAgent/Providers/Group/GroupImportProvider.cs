@@ -225,7 +225,7 @@ namespace Lithnet.Okta.ManagementAgent
                 filter = $"({filter}) AND (lastUpdated gt \"{this.lastGroupUpdateHighWatermark.ToSmartString()}Z\" or lastMembershipUpdated gt \"{this.lastGroupMemberUpdateHighWatermark.ToSmartString()}Z\")";
             }
 
-            return client.Groups.ListGroups(null, filter);
+            return client.Groups.ListGroups(null, filter, null, OktaMAConfigSection.Configuration.GroupListPageSize);
         }
 
         private ObjectModificationType GetObjectModificationType(IGroup group, bool inDelta)

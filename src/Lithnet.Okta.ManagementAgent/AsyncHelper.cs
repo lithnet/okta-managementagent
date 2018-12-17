@@ -16,7 +16,7 @@ namespace Lithnet.Okta.ManagementAgent
         // This function destroys ILMerge, so we switched to ILRepack instead. The GetAwaiter() call seems to be responsible for making ILMerge hang
         public static TResult RunSync<TResult>(Task<TResult> func)
         {
-            return factory.StartNew(() => func).Unwrap().GetAwaiter().GetResult();
+            return RunSync(func, CancellationToken.None);
         }
 
         public static TResult RunSync<TResult>(Task<TResult> func, CancellationToken token)
@@ -26,7 +26,7 @@ namespace Lithnet.Okta.ManagementAgent
 
         public static void RunSync(Task func)
         {
-            factory.StartNew(() => func).Unwrap().GetAwaiter().GetResult();
+            RunSync(func, CancellationToken.None);
         }
 
         public static void RunSync(Task func, CancellationToken token)
