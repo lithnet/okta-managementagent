@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using Lithnet.Ecma2Framework;
@@ -9,7 +8,7 @@ using Lithnet.MetadirectoryServices;
 using Microsoft.MetadirectoryServices;
 using NLog;
 using Okta.Sdk;
-using System.Collections.Concurrent;
+using System.Threading.Tasks.Dataflow;
 
 namespace Lithnet.Okta.ManagementAgent
 {
@@ -22,62 +21,50 @@ namespace Lithnet.Okta.ManagementAgent
             AsyncHelper.RunSync(this.GetCSEntryChangesAsync(context, type), context.CancellationTokenSource.Token);
         }
 
-        private async Task GetCSEntryChangesAsync(ImportContext context, SchemaType type)
+        public async Task GetCSEntryChangesAsync(ImportContext context, SchemaType type)
         {
-            IAsyncEnumerable<IUser> users = this.GetUserEnumerable(context.InDelta, context.IncomingWatermark, ((OktaConnectionContext)context.ConnectionContext).Client, context);
-            BlockingCollection<IUser> queue = new BlockingCollection<IUser>();
-
-            var consumerTask = Task.Run<long>(() => this.ConsumeUserObjects(context, type, queue), context.CancellationTokenSource.Token);
-
-            await users.ForEachAsync(t => queue.Add(t)).ConfigureAwait(false);
-
-            queue.CompleteAdding();
-
-            long userHighestTicks = await consumerTask.ConfigureAwait(false);
-
-            string wmv;
-
-            if (userHighestTicks <= 0)
+            try
             {
-                wmv = context.IncomingWatermark["users"].Value;
-            }
-            else
-            {
-                wmv = userHighestTicks.ToString();
-            }
+                IAsyncEnumerable<IUser> users = this.GetUserEnumerable(context.InDelta, context.IncomingWatermark, ((OktaConnectionContext)context.ConnectionContext).Client, context);
+                BufferBlock<IUser> queue = new BufferBlock<IUser>();
 
-            context.OutgoingWatermark.Add(new Watermark("users", wmv, "DateTime"));
+                Task consumer = this.ConsumeObjects(context, type, queue);
+
+                // Post source data to the dataflow block.
+                await this.ProduceObjects(users, queue).ConfigureAwait(false);
+
+                // Wait for the consumer to process all data.
+                await consumer.ConfigureAwait(false);
+            }
+            catch (Exception ex)
+            {
+                logger.Error(ex, "There was an error importing the user data");
+                throw;
+            }
         }
 
-        private long ConsumeUserObjects(ImportContext context, SchemaType type, BlockingCollection<IUser> producer)
+        private async Task ProduceObjects(IAsyncEnumerable<IUser> users, ITargetBlock<IUser> target)
         {
-            ParallelOptions options = new ParallelOptions { CancellationToken = context.CancellationTokenSource.Token };
+            await users.ForEachAsync(t => target.Post(t));
+            target.Complete();
+        }
 
-            if (Debugger.IsAttached)
-            {
-                options.MaxDegreeOfParallelism = 1;
-            }
-            else
-            {
-                options.MaxDegreeOfParallelism = OktaMAConfigSection.Configuration.ImportThreads;
-            }
-
-            object syncObject = new object();
+        private async Task ConsumeObjects(ImportContext context, SchemaType type, ISourceBlock<IUser> source)
+        {
             long userHighestTicks = 0;
 
-            Parallel.ForEach<IUser>(producer.GetConsumingEnumerable(), options, user =>
+            while (await source.OutputAvailableAsync())
             {
+                IUser user = source.Receive();
+
                 try
                 {
                     if (user.LastUpdated.HasValue)
                     {
-                        lock (syncObject)
-                        {
-                            userHighestTicks = Math.Max(userHighestTicks, user.LastUpdated.Value.Ticks);
-                        }
+                        AsyncHelper.InterlockedMax(ref userHighestTicks, user.LastUpdated.Value.Ticks);
                     }
 
-                    CSEntryChange c = AsyncHelper.RunSync(this.UserToCSEntryChange(context.InDelta, type, user, context), context.CancellationTokenSource.Token);
+                    CSEntryChange c = await this.UserToCSEntryChange(context.InDelta, type, user, context).ConfigureAwait(false);
 
                     if (c != null)
                     {
@@ -95,10 +82,21 @@ namespace Lithnet.Okta.ManagementAgent
                     context.ImportItems.Add(csentry, context.CancellationTokenSource.Token);
                 }
 
-                options.CancellationToken.ThrowIfCancellationRequested();
-            });
+                context.CancellationTokenSource.Token.ThrowIfCancellationRequested();
+            }
 
-            return userHighestTicks;
+            string wmv;
+
+            if (userHighestTicks <= 0)
+            {
+                wmv = context.IncomingWatermark["users"].Value;
+            }
+            else
+            {
+                wmv = userHighestTicks.ToString();
+            }
+
+            context.OutgoingWatermark.Add(new Watermark("users", wmv, "DateTime"));
         }
 
         private async Task<CSEntryChange> UserToCSEntryChange(bool inDelta, SchemaType schemaType, IUser user, ImportContext context)
