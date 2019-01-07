@@ -219,7 +219,7 @@ namespace Lithnet.Okta.ManagementAgent
 
                 if (context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value == "Delete")
                 {
-                    filter += " and(status eq \"LOCKED_OUT\" or status eq \"RECOVERY\" or status eq \"STAGED\" or status eq \"PROVISIONED\" or status eq \"ACTIVE\" or status eq \"PASSWORD_EXPIRED\" or status eq \"DEPROVISIONED\")";
+                    filter += " and(status eq \"LOCKED_OUT\" or status eq \"RECOVERY\" or status eq \"STAGED\" or status eq \"PROVISIONED\" or status eq \"ACTIVE\" or status eq \"PASSWORD_EXPIRED\" or status eq \"DEPROVISIONED\" or status eq \"SUSPENDED\")";
                 }
 
                 users = client.Users.ListUsers(null, null, OktaMAConfigSection.Configuration.UserListPageSize, filter);
@@ -230,7 +230,7 @@ namespace Lithnet.Okta.ManagementAgent
 
                 if (context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value == "Delete")
                 {
-                    filter = "(status eq \"LOCKED_OUT\" or status eq \"RECOVERY\" or status eq \"STAGED\" or status eq \"PROVISIONED\" or status eq \"ACTIVE\" or status eq \"PASSWORD_EXPIRED\" or status eq \"DEPROVISIONED\")";
+                    filter = "(status eq \"LOCKED_OUT\" or status eq \"RECOVERY\" or status eq \"STAGED\" or status eq \"PROVISIONED\" or status eq \"ACTIVE\" or status eq \"PASSWORD_EXPIRED\" or status eq \"DEPROVISIONED\" or status eq \"SUSPENDED\")";
                 }
 
                 users = client.Users.ListUsers(null, null, OktaMAConfigSection.Configuration.UserListPageSize, filter);
