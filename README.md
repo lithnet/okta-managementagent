@@ -11,8 +11,8 @@ The Lithnet Okta Management Agent provides support for managing Okta users with 
 The Lithnet Okta MA requires FIM 2010 R2 at least version 4.1.3441, and .NET Framework 4.6.
 
 ## Getting started
-Download the management agent from the [releases page](https://github.com/lithnet/okta-managementagent/releases)
-Read the [getting started guide](https://github.com/lithnet/okta-managementagent/wiki)
+* Download the management agent from the [releases page](https://github.com/lithnet/okta-managementagent/releases)
+* Read the [getting started guide](https://github.com/lithnet/okta-managementagent/wiki)
 
 ## Keep up to date
 * [Visit my blog](http://blog.lithiumblue.com)
