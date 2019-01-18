@@ -49,7 +49,7 @@ namespace Lithnet.Okta.ManagementAgent
         {
             IOktaClient client = ((OktaConnectionContext)context.ConnectionContext).Client;
 
-            AsyncHelper.RunSync(client.Users.DeactivateUserAsync(csentry.DN, context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
+            AsyncHelper.RunSync(client.Users.DeactivateUserAsync(csentry.DN, cancellationToken: context.CancellationTokenSource.Token), context.CancellationTokenSource.Token);
 
             if (context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value == "Delete")
             {

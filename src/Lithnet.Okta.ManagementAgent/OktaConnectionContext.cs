@@ -38,10 +38,11 @@ namespace Lithnet.Okta.ManagementAgent
 
             OktaClientConfiguration oktaConfig = new OktaClientConfiguration
             {
-                OrgUrl = configParameters[ConfigParameterNames.TenantUrl].Value,
+                OktaDomain = configParameters[ConfigParameterNames.TenantUrl].Value,
                 Token = configParameters[ConfigParameterNames.ApiKey].SecureValue.ConvertToUnsecureString(),
                 Proxy = proxyConfig,
-                ConnectionTimeout = OktaMAConfigSection.Configuration.HttpClientTimeout
+                ConnectionTimeout = OktaMAConfigSection.Configuration.HttpClientTimeout,
+                MaxRetries = 8,
             };
 
             HttpClient httpClient;
@@ -54,12 +55,12 @@ namespace Lithnet.Okta.ManagementAgent
             }
             else
             {
-                httpClient = OktaConnectionContext.CreateHttpClient(nlogger, oktaConfig);
+                httpClient = DefaultHttpClient.Create(oktaConfig.ConnectionTimeout, proxyConfig, nlogger);
             }
 
             return new OktaConnectionContext()
             {
-                Client = new OktaClient(oktaConfig, httpClient, nlogger),
+                Client = new OktaClient(oktaConfig, httpClient, nlogger, new DefaultRetryStrategy(oktaConfig.MaxRetries ?? 8, 0, 1))
             };
         }
 
@@ -86,31 +87,6 @@ namespace Lithnet.Okta.ManagementAgent
             //// Workaround for https://github.com/dotnet/corefx/issues/11224
             //httpClient.DefaultRequestHeaders.Add("Connection", "close");
             return httpClient;
-        }
-
-        private static HttpClient CreateHttpClient(ILogger nlogger, OktaClientConfiguration oktaConfig)
-        {
-            var handler = new HttpClientHandler
-            {
-                AllowAutoRedirect = false,
-            };
-
-            if (oktaConfig.Proxy != null)
-            {
-                handler.Proxy = new DefaultProxy(oktaConfig.Proxy, nlogger);
-            }
-
-            var client = new HttpClient(handler, true)
-            {
-                Timeout = TimeSpan.FromSeconds(oktaConfig.ConnectionTimeout ?? OktaClientConfiguration.DefaultConnectionTimeout),
-            };
-
-            OktaConnectionContext.logger.Trace($"Using timeout of {client.Timeout} second(s) from configuration");
-
-            // Workaround for https://github.com/dotnet/corefx/issues/11224
-            //client.DefaultRequestHeaders.Add("Connection", "close");
-
-            return client;
         }
     }
 }

@@ -4,7 +4,6 @@ using Lithnet.Ecma2Framework;
 using Microsoft.MetadirectoryServices;
 using NLog;
 using Okta.Sdk;
-using HttpRequest = Okta.Sdk.Internal.HttpRequest;
 
 namespace Lithnet.Okta.ManagementAgent
 {
