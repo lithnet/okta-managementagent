@@ -2,8 +2,6 @@
 # Okta Management Agent for FIM 2010 R2 and MIM 2016
 The Lithnet Okta Management Agent provides support for managing Okta users with FIM 2010 R2 and higher.
 
-*** This is a pre-release ***
-
 ## Features
 * Supports the import and export of Okta-managed users
 * Supports the import of groups
@@ -14,7 +12,6 @@ The Lithnet Okta MA requires FIM 2010 R2 at least version 4.1.3441, and .NET Fra
 
 ## Getting started
 Download the management agent from the [releases page](https://github.com/lithnet/okta-managementagent/releases)
-
 Read the [getting started guide](https://github.com/lithnet/okta-managementagent/wiki)
 
 ## Keep up to date
