@@ -66,9 +66,8 @@
     <Reference Include="Microsoft.Extensions.Primitives, Version=2.0.0.0, Culture=neutral, PublicKeyToken=adb9793829ddae60, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Extensions.Primitives.2.0.0\lib\netstandard2.0\Microsoft.Extensions.Primitives.dll</HintPath>
     </Reference>
-    <Reference Include="Microsoft.MetadirectoryServicesEx, Version=4.1.4.0, Culture=neutral, PublicKeyToken=31bf3856ad364e35, processorArchitecture=MSIL">
-      <SpecificVersion>False</SpecificVersion>
-      <HintPath>C:\Program Files\Microsoft Forefront Identity Manager\2010\Synchronization Service\Extensions\Microsoft.MetadirectoryServicesEx.dll</HintPath>
+    <Reference Include="Microsoft.MetadirectoryServicesEx">
+      <HintPath>..\..\..\lib\Microsoft.MetadirectoryServicesEx\4.3.1935\Microsoft.MetadirectoryServicesEx.dll</HintPath>
     </Reference>
     <Reference Include="Microsoft.Win32.Primitives, Version=4.0.2.0, Culture=neutral, PublicKeyToken=b03f5f7f11d50a3a, processorArchitecture=MSIL">
       <HintPath>..\packages\Microsoft.Win32.Primitives.4.3.0\lib\net46\Microsoft.Win32.Primitives.dll</HintPath>
@@ -260,20 +259,15 @@
   <PropertyGroup>
     <PostBuildEvent>if not exist "$(TargetDir)merged" mkdir "$(TargetDir)merged"
 $(SolutionDir)\packages\ILRepack.2.0.16\tools\ILRepack.exe /targetplatform:"v4,C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0" /out:$(TargetDir)merged\$(TargetName).dll $(TargetDir)$(TargetName).dll Lithnet.Ecma2Framework.dll
-REM $(SolutionDir)\packages\ILRepack.2.0.16\tools\ILRepack.exe /targetplatform:"v4,C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0" /lib:D:\github\lithnet\okta-managementagent\src\packages\Newtonsoft.Json.11.0.2\lib\net45\ /out:$(TargetDir)merged\$(TargetName).dll $(TargetDir)$(TargetName).dll Lithnet.Ecma2Framework.dll
+REM $(SolutionDir)\packages\ILRepack.2.0.16\tools\ILRepack.exe /targetplatform:"v4,C:\Program Files (x86)\Reference Assemblies\Microsoft\Framework\.NETFramework\v4.0" /lib:D:\github\lithnet\okta-managementagent\src\packages\Newtonsoft.Json.12.0.1\lib\net45\ /out:$(TargetDir)merged\$(TargetName).dll $(TargetDir)$(TargetName).dll Lithnet.Ecma2Framework.dll
 del "$(TargetDir)*" /Q
 move /Y "$(TargetDir)merged\*" "$(TargetDir)"
 rmdir "$(TargetDir)merged"
 
-"C:\Program Files (x86)\Microsoft SDKs\ClickOnce\SignTool\signtool.exe" sign /sha1 "$(CSCERTTHUMBPRINT)" /t http://timestamp.digicert.com /fd sha256 /v "$(TargetFileName)"
-
-"C:\Program Files\Debugging Tools for Windows (x64)\symstore" add /f "$(TargetDir)*.pdb" /s \\localhost\symbols /t "$(ProjectName)" /v "@(VersionNumber)"
-</PostBuildEvent>
+call %25BuildToolsPath%25\sign-and-save-symbols.bat $(TargetPath) $(TargetDir) $(ProjectName)</PostBuildEvent>
   </PropertyGroup>
   <PropertyGroup>
-    <PreBuildEvent>
-      del $(ProjectDir)$(ProjectName).PackagedMA.xml /f
-      "C:\Program Files\Microsoft Forefront Identity Manager\2010\Synchronization Service\Bin\mapackager.exe" /e:$(ProjectDir)ExportedMA.xml /c:$(ProjectDir)MAPackageInformation.xml /o:$(ProjectDir)$(ProjectName).PackagedMA.xml
-    </PreBuildEvent>
+    <PreBuildEvent>del $(ProjectDir)$(ProjectName).PackagedMA.xml /f
+"C:\Program Files\Microsoft Forefront Identity Manager\2010\Synchronization Service\Bin\mapackager.exe" /e:$(ProjectDir)ExportedMA.xml /c:$(ProjectDir)MAPackageInformation.xml /o:$(ProjectDir)$(ProjectName).PackagedMA.xml"</PreBuildEvent>
   </PropertyGroup>
 </Project>
