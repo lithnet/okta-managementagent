@@ -18,7 +18,7 @@ The Lithnet Okta MA requires FIM 2010 R2 at least version 4.1.3441, and .NET Fra
 * Found an issue and want us to fix it? [Log it](https://github.com/lithnet/okta-managementagent/issues)
 * Want to fix an issue yourself or add functionality? Clone the project and submit a pull request
 
-## Enteprise support
+## Enterprise support
 Lithnet offer enterprise support plans for our open-source products. Deploy our tools with confidence that you have the backing of the dedicated Lithnet support team if you run into any issues, have questions, or need advice. Simply fill out the [request form](https://lithnet.io/products/mim), let us know the number of users you are managing with your MIM implementation, and we'll put together a quote.
 
 ## Keep up to date
