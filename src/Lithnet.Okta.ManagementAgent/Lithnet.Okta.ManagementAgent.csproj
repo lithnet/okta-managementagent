@@ -21,7 +21,7 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Lithnet.Ecma2Framework" Version="2.0.23" />
+		<PackageReference Include="Lithnet.Ecma2Framework" Version="2.0.24" />
 		<PackageReference Include="Lithnet.MetadirectoryServices" version="1.0.7578.14947" />
 		<PackageReference Include="NLog" version="4.5.11" />
 		<PackageReference Include="NLog.Extensions.Logging" version="1.0.2" />
