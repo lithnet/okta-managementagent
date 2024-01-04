@@ -12,7 +12,7 @@ using ILogger = Microsoft.Extensions.Logging.ILogger;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    public class OktaConnectionContext
+    public class OktaConnectionContext : IConnectionContext
     {
         private static readonly Logger logger = LogManager.GetCurrentClassLogger();
 

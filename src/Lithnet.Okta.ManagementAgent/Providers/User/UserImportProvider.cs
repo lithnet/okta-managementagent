@@ -3,12 +3,12 @@ using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading.Tasks;
+using System.Threading.Tasks.Dataflow;
 using Lithnet.Ecma2Framework;
 using Lithnet.MetadirectoryServices;
 using Microsoft.MetadirectoryServices;
 using NLog;
 using Okta.Sdk;
-using System.Threading.Tasks.Dataflow;
 
 namespace Lithnet.Okta.ManagementAgent
 {
@@ -16,19 +16,28 @@ namespace Lithnet.Okta.ManagementAgent
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public void GetCSEntryChanges(ImportContext context, SchemaType type)
+        private IImportContext context;
+        private IOktaClient client;
+
+        public void Initialize(IImportContext context)
         {
-            AsyncHelper.RunSync(this.GetCSEntryChangesAsync(context, type), context.CancellationTokenSource.Token);
+            this.context = context;
+            this.client = ((OktaConnectionContext)context.ConnectionContext).Client;
         }
 
-        public async Task GetCSEntryChangesAsync(ImportContext context, SchemaType type)
+        public void GetCSEntryChanges(SchemaType type)
+        {
+            AsyncHelper.RunSync(this.GetCSEntryChangesAsync(type), this.context.Token);
+        }
+
+        public async Task GetCSEntryChangesAsync(SchemaType type)
         {
             try
             {
-                IAsyncEnumerable<IUser> users = this.GetUserEnumerable(context.InDelta, context.IncomingWatermark, ((OktaConnectionContext)context.ConnectionContext).Client, context);
+                IAsyncEnumerable<IUser> users = this.GetUserEnumerable();
                 BufferBlock<IUser> queue = new BufferBlock<IUser>();
 
-                Task consumer = this.ConsumeObjects(context, type, queue);
+                Task consumer = this.ConsumeObjects(type, queue);
 
                 // Post source data to the dataflow block.
                 await this.ProduceObjects(users, queue).ConfigureAwait(false);
@@ -49,7 +58,7 @@ namespace Lithnet.Okta.ManagementAgent
             target.Complete();
         }
 
-        private async Task ConsumeObjects(ImportContext context, SchemaType type, ISourceBlock<IUser> source)
+        private async Task ConsumeObjects(SchemaType type, ISourceBlock<IUser> source)
         {
             long userHighestTicks = 0;
 
@@ -64,11 +73,11 @@ namespace Lithnet.Okta.ManagementAgent
                         AsyncHelper.InterlockedMax(ref userHighestTicks, user.LastUpdated.Value.Ticks);
                     }
 
-                    CSEntryChange c = await this.UserToCSEntryChange(context.InDelta, type, user, context).ConfigureAwait(false);
+                    CSEntryChange c = await this.UserToCSEntryChange(type, user).ConfigureAwait(false);
 
                     if (c != null)
                     {
-                        context.ImportItems.Add(c, context.CancellationTokenSource.Token);
+                        this.context.ImportItems.Add(c, this.context.Token);
                     }
                 }
                 catch (Exception ex)
@@ -79,33 +88,33 @@ namespace Lithnet.Okta.ManagementAgent
                     csentry.ErrorCodeImport = MAImportError.ImportErrorCustomContinueRun;
                     csentry.ErrorDetail = ex.StackTrace;
                     csentry.ErrorName = ex.Message;
-                    context.ImportItems.Add(csentry, context.CancellationTokenSource.Token);
+                    this.context.ImportItems.Add(csentry, this.context.Token);
                 }
 
-                context.CancellationTokenSource.Token.ThrowIfCancellationRequested();
+                this.context.Token.ThrowIfCancellationRequested();
             }
 
             string wmv;
 
             if (userHighestTicks <= 0)
             {
-                wmv = context.IncomingWatermark["users"].Value;
+                wmv = this.context.IncomingWatermark["users"].Value;
             }
             else
             {
                 wmv = userHighestTicks.ToString();
             }
 
-            context.OutgoingWatermark.Add(new Watermark("users", wmv, "DateTime"));
+            this.context.OutgoingWatermark.Add(new Watermark("users", wmv, "DateTime"));
         }
 
-        private async Task<CSEntryChange> UserToCSEntryChange(bool inDelta, SchemaType schemaType, IUser user, ImportContext context)
+        private async Task<CSEntryChange> UserToCSEntryChange(SchemaType schemaType, IUser user)
         {
             Resource profile = user.GetProperty<Resource>("profile");
             string login = profile.GetProperty<string>("login");
             logger.Trace($"Creating CSEntryChange for {user.Id}/{login}");
 
-            ObjectModificationType modType = this.GetObjectModificationType(user, inDelta, context);
+            ObjectModificationType modType = this.GetObjectModificationType(user);
 
             if (modType == ObjectModificationType.None)
             {
@@ -195,55 +204,55 @@ namespace Lithnet.Okta.ManagementAgent
             return c;
         }
 
-        private IAsyncEnumerable<IUser> GetUserEnumerable(bool inDelta, WatermarkKeyedCollection importState, IOktaClient client, ImportContext context)
+        private IAsyncEnumerable<IUser> GetUserEnumerable()
         {
             IAsyncEnumerable<IUser> users;
 
-            if (inDelta)
+            if (this.context.InDelta)
             {
-                if (importState == null)
+                if (this.context.IncomingWatermark == null)
                 {
                     throw new WarningNoWatermarkException("No watermark was available to perform a delta import");
                 }
 
-                if (!importState.Contains("users"))
+                if (!this.context.IncomingWatermark.Contains("users"))
                 {
                     throw new WarningNoWatermarkException("No watermark was available to perform a delta import for the user object type");
                 }
 
-                string value = importState["users"].Value;
+                string value = this.context.IncomingWatermark["users"].Value;
                 long ticks = long.Parse(value);
                 DateTime dt = new DateTime(ticks);
 
                 string filter = $"(lastUpdated gt \"{dt.ToSmartString()}Z\")";
 
-                if (context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value == "Delete")
+                if (this.context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value == "Delete")
                 {
                     filter += " and(status eq \"LOCKED_OUT\" or status eq \"RECOVERY\" or status eq \"STAGED\" or status eq \"PROVISIONED\" or status eq \"ACTIVE\" or status eq \"PASSWORD_EXPIRED\" or status eq \"DEPROVISIONED\" or status eq \"SUSPENDED\")";
                 }
 
-                users = client.Users.ListUsers(null, null, OktaMAConfigSection.Configuration.UserListPageSize, filter);
+                users = this.client.Users.ListUsers(null, null, OktaMAConfigSection.Configuration.UserListPageSize, filter);
             }
             else
             {
                 string filter = null;
 
-                if (context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value == "Delete")
+                if (this.context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value == "Delete")
                 {
                     filter = "(status eq \"LOCKED_OUT\" or status eq \"RECOVERY\" or status eq \"STAGED\" or status eq \"PROVISIONED\" or status eq \"ACTIVE\" or status eq \"PASSWORD_EXPIRED\" or status eq \"DEPROVISIONED\" or status eq \"SUSPENDED\")";
                 }
 
-                users = client.Users.ListUsers(null, null, OktaMAConfigSection.Configuration.UserListPageSize, filter);
+                users = this.client.Users.ListUsers(null, null, OktaMAConfigSection.Configuration.UserListPageSize, filter);
             }
 
             return users;
         }
 
-        private ObjectModificationType GetObjectModificationType(IUser user, bool inDelta, ImportContext context)
+        private ObjectModificationType GetObjectModificationType(IUser user)
         {
-            if (!inDelta)
+            if (!this.context.InDelta)
             {
-                if (context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value != "Delete")
+                if (this.context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value != "Delete")
                 {
                     if ((user.Status?.Value == UserStatus.Deprovisioned ||
                          user.TransitioningToStatus?.Value == UserStatus.Deprovisioned) &&
@@ -258,7 +267,7 @@ namespace Lithnet.Okta.ManagementAgent
                 return ObjectModificationType.Add;
             }
 
-            if (context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value != "Delete")
+            if (this.context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value != "Delete")
             {
                 if ((user.Status?.Value == UserStatus.Deprovisioned ||
                      user.TransitioningToStatus?.Value == UserStatus.Deprovisioned) &&

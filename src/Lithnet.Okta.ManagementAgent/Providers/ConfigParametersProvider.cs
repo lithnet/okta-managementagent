@@ -7,25 +7,23 @@ namespace Lithnet.Okta.ManagementAgent
 {
     public class ConfigParametersProvider : IConfigParametersProvider
     {
-        public IList<ConfigParameterDefinition> GetConfigParameters(KeyedCollection<string, ConfigParameter> configParameters, ConfigParameterPage page)
+        public void GetConfigParameters(KeyedCollection<string, ConfigParameter> existingConfigParameters, IList<ConfigParameterDefinition> newDefinitions, ConfigParameterPage page)
         {
-            List<ConfigParameterDefinition> configParametersDefinitions = new List<ConfigParameterDefinition>();
-
             switch (page)
             {
                 case ConfigParameterPage.Connectivity:
-                    configParametersDefinitions.Add(ConfigParameterDefinition.CreateStringParameter(ConfigParameterNames.TenantUrl, string.Empty));
-                    configParametersDefinitions.Add(ConfigParameterDefinition.CreateEncryptedStringParameter(ConfigParameterNames.ApiKey, string.Empty));
-                    configParametersDefinitions.Add(ConfigParameterDefinition.CreateStringParameter(ConfigParameterNames.LogFileName, string.Empty));
+                    newDefinitions.Add(ConfigParameterDefinition.CreateStringParameter(ConfigParameterNames.TenantUrl, string.Empty));
+                    newDefinitions.Add(ConfigParameterDefinition.CreateEncryptedStringParameter(ConfigParameterNames.ApiKey, string.Empty));
+                    newDefinitions.Add(ConfigParameterDefinition.CreateStringParameter(ConfigParameterNames.LogFileName, string.Empty));
                     break;
 
                 case ConfigParameterPage.Global:
-                    configParametersDefinitions.Add(ConfigParameterDefinition.CreateCheckBoxParameter(ConfigParameterNames.IncludeBuiltInGroups, false));
-                    configParametersDefinitions.Add(ConfigParameterDefinition.CreateCheckBoxParameter(ConfigParameterNames.IncludeAppGroups, false));
-                    configParametersDefinitions.Add(ConfigParameterDefinition.CreateDividerParameter());
-                    configParametersDefinitions.Add(ConfigParameterDefinition.CreateDropDownParameter(ConfigParameterNames.UserDeprovisioningAction, new string[] { "Delete", "Deactivate" }, false, "Deactivate"));
-                    configParametersDefinitions.Add(ConfigParameterDefinition.CreateCheckBoxParameter(ConfigParameterNames.ActivateNewUsers, false));
-                    configParametersDefinitions.Add(ConfigParameterDefinition.CreateCheckBoxParameter(ConfigParameterNames.SendActivationEmailToNewUsers, false));
+                    newDefinitions.Add(ConfigParameterDefinition.CreateCheckBoxParameter(ConfigParameterNames.IncludeBuiltInGroups, false));
+                    newDefinitions.Add(ConfigParameterDefinition.CreateCheckBoxParameter(ConfigParameterNames.IncludeAppGroups, false));
+                    newDefinitions.Add(ConfigParameterDefinition.CreateDividerParameter());
+                    newDefinitions.Add(ConfigParameterDefinition.CreateDropDownParameter(ConfigParameterNames.UserDeprovisioningAction, new string[] { "Delete", "Deactivate" }, false, "Deactivate"));
+                    newDefinitions.Add(ConfigParameterDefinition.CreateCheckBoxParameter(ConfigParameterNames.ActivateNewUsers, false));
+                    newDefinitions.Add(ConfigParameterDefinition.CreateCheckBoxParameter(ConfigParameterNames.SendActivationEmailToNewUsers, false));
 
                     break;
 
@@ -35,8 +33,6 @@ namespace Lithnet.Okta.ManagementAgent
                 case ConfigParameterPage.RunStep:
                     break;
             }
-
-            return configParametersDefinitions;
         }
 
         public ParameterValidationResult ValidateConfigParameters(KeyedCollection<string, ConfigParameter> configParameters, ConfigParameterPage page)

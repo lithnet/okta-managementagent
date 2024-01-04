@@ -1,7 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
 using System.Threading.Tasks.Dataflow;
@@ -17,26 +15,32 @@ namespace Lithnet.Okta.ManagementAgent
     {
         private const string GroupUpdateKey = "group";
         private const string GroupMemberUpdateKey = "group-member";
-
-        private DateTime? lastGroupUpdateHighWatermark;
-
-        private DateTime? lastGroupMemberUpdateHighWatermark;
-
         private static Logger logger = LogManager.GetCurrentClassLogger();
 
-        public void GetCSEntryChanges(ImportContext context, SchemaType type)
+        private IImportContext context;
+        private IOktaClient client;
+        private DateTime? lastGroupUpdateHighWatermark;
+        private DateTime? lastGroupMemberUpdateHighWatermark;
+
+        public void Initialize(IImportContext context)
         {
-            AsyncHelper.RunSync(this.GetCSEntryChangesAsync(context, type), context.CancellationTokenSource.Token);
+            this.context = context;
+            this.client = ((OktaConnectionContext)context.ConnectionContext).Client;
         }
 
-        public async Task GetCSEntryChangesAsync(ImportContext context, SchemaType type)
+        public void GetCSEntryChanges(SchemaType type)
+        {
+            AsyncHelper.RunSync(this.GetCSEntryChangesAsync(type), this.context.Token);
+        }
+
+        public async Task GetCSEntryChangesAsync(SchemaType type)
         {
             try
             {
-                IAsyncEnumerable<IGroup> groups = this.GetGroupEnumerable(context.InDelta, context.ConfigParameters, context.IncomingWatermark, ((OktaConnectionContext)context.ConnectionContext).Client);
+                IAsyncEnumerable<IGroup> groups = this.GetGroupEnumerable();
                 BufferBlock<IGroup> queue = new BufferBlock<IGroup>();
 
-                Task consumer = this.ConsumeObjects(context, type, queue);
+                Task consumer = this.ConsumeObjects(type, queue);
 
                 // Post source data to the dataflow block.
                 await this.ProduceObjects(groups, queue).ConfigureAwait(false);
@@ -57,7 +61,7 @@ namespace Lithnet.Okta.ManagementAgent
             target.Complete();
         }
 
-        private async Task ConsumeObjects(ImportContext context, SchemaType type, ISourceBlock<IGroup> source)
+        private async Task ConsumeObjects(SchemaType type, ISourceBlock<IGroup> source)
         {
             long groupUpdateHighestTicks = 0;
             long groupMemberUpdateHighestTicks = 0;
@@ -79,11 +83,11 @@ namespace Lithnet.Okta.ManagementAgent
                         AsyncHelper.InterlockedMax(ref groupMemberUpdateHighestTicks, group.LastMembershipUpdated.Value.Ticks);
                     }
 
-                    CSEntryChange c = await this.GroupToCSEntryChange(context, type, group).ConfigureAwait(false);
+                    CSEntryChange c = await this.GroupToCSEntryChange(type, group).ConfigureAwait(false);
 
                     if (c != null)
                     {
-                        context.ImportItems.Add(c, context.CancellationTokenSource.Token);
+                        this.context.ImportItems.Add(c, this.context.Token);
                     }
                 }
                 catch (Exception ex)
@@ -94,43 +98,43 @@ namespace Lithnet.Okta.ManagementAgent
                     csentry.ErrorCodeImport = MAImportError.ImportErrorCustomContinueRun;
                     csentry.ErrorDetail = ex.StackTrace;
                     csentry.ErrorName = ex.Message;
-                    context.ImportItems.Add(csentry, context.CancellationTokenSource.Token);
+                    this.context.ImportItems.Add(csentry, this.context.Token);
                 }
 
-                context.CancellationTokenSource.Token.ThrowIfCancellationRequested();
+                this.context.Token.ThrowIfCancellationRequested();
             }
 
             string wmv;
 
             if (groupUpdateHighestTicks <= 0)
             {
-                wmv = context.IncomingWatermark[GroupUpdateKey].Value;
+                wmv = this.context.IncomingWatermark[GroupUpdateKey].Value;
             }
             else
             {
                 wmv = groupUpdateHighestTicks.ToString();
             }
 
-            context.OutgoingWatermark.Add(new Watermark(GroupUpdateKey, wmv, "DateTime"));
+            this.context.OutgoingWatermark.Add(new Watermark(GroupUpdateKey, wmv, "DateTime"));
 
             if (groupMemberUpdateHighestTicks <= 0)
             {
-                wmv = context.IncomingWatermark[GroupMemberUpdateKey].Value;
+                wmv = this.context.IncomingWatermark[GroupMemberUpdateKey].Value;
             }
             else
             {
                 wmv = groupMemberUpdateHighestTicks.ToString();
             }
 
-            context.OutgoingWatermark.Add(new Watermark(GroupMemberUpdateKey, wmv, "DateTime"));
+            this.context.OutgoingWatermark.Add(new Watermark(GroupMemberUpdateKey, wmv, "DateTime"));
         }
 
-        private async Task<CSEntryChange> GroupToCSEntryChange(ImportContext context, SchemaType schemaType, IGroup group)
+        private async Task<CSEntryChange> GroupToCSEntryChange(SchemaType schemaType, IGroup group)
         {
             Resource profile = group.GetProperty<Resource>("profile");
             logger.Trace($"Creating CSEntryChange for group {group.Id}");
 
-            ObjectModificationType modType = this.GetObjectModificationType(group, context.InDelta);
+            ObjectModificationType modType = this.GetObjectModificationType(group);
 
             if (modType == ObjectModificationType.None)
             {
@@ -154,7 +158,7 @@ namespace Lithnet.Okta.ManagementAgent
                 {
                     IList<object> members = new List<object>();
 
-                    var items = ((OktaConnectionContext) context.ConnectionContext).Client.GetCollection<User>($"/api/v1/groups/{group.Id}/skinny_users");
+                    var items = ((OktaConnectionContext)this.context.ConnectionContext).Client.GetCollection<User>($"/api/v1/groups/{group.Id}/skinny_users");
 
                     await items.ForEachAsync(u => members.Add(u.Id)).ConfigureAwait(false);
 
@@ -202,43 +206,43 @@ namespace Lithnet.Okta.ManagementAgent
             return c;
         }
 
-        private DateTime GetLastHighWatermarkGroup(WatermarkKeyedCollection importState)
+        private DateTime GetLastHighWatermarkGroup()
         {
-            return this.GetLastHighWatermark(importState, GroupUpdateKey);
+            return this.GetLastHighWatermark(GroupUpdateKey);
         }
 
-        private DateTime GetLastHighWatermarkGroupMember(WatermarkKeyedCollection importState)
+        private DateTime GetLastHighWatermarkGroupMember()
         {
-            return this.GetLastHighWatermark(importState, GroupMemberUpdateKey);
+            return this.GetLastHighWatermark(GroupMemberUpdateKey);
         }
 
-        private DateTime GetLastHighWatermark(WatermarkKeyedCollection importState, string key)
+        private DateTime GetLastHighWatermark(string key)
         {
-            if (importState == null)
+            if (this.context.IncomingWatermark == null)
             {
                 throw new WarningNoWatermarkException("No watermark was available to perform a delta import");
             }
 
-            if (!importState.Contains(key))
+            if (!this.context.IncomingWatermark.Contains(key))
             {
                 throw new WarningNoWatermarkException("No watermark was available to perform a delta import for the group object type");
             }
 
-            string value = importState[key].Value;
+            string value = this.context.IncomingWatermark[key].Value;
             long ticks = long.Parse(value);
             return new DateTime(ticks);
         }
 
-        private IAsyncEnumerable<IGroup> GetGroupEnumerable(bool inDelta, KeyedCollection<string, ConfigParameter> configParameters, WatermarkKeyedCollection importState, IOktaClient client)
+        private IAsyncEnumerable<IGroup> GetGroupEnumerable()
         {
             List<string> filterConditions = new List<string>();
 
-            if (configParameters[ConfigParameterNames.IncludeBuiltInGroups].Value == "1")
+            if (this.context.ConfigParameters[ConfigParameterNames.IncludeBuiltInGroups].Value == "1")
             {
                 filterConditions.Add("(type eq \"BUILT_IN\")");
             }
 
-            if (configParameters[ConfigParameterNames.IncludeAppGroups].Value == "1")
+            if (this.context.ConfigParameters[ConfigParameterNames.IncludeAppGroups].Value == "1")
             {
                 filterConditions.Add("(type eq \"APP_GROUP\")");
             }
@@ -247,20 +251,20 @@ namespace Lithnet.Okta.ManagementAgent
 
             string filter = string.Join(" OR ", filterConditions);
 
-            if (inDelta)
+            if (this.context.InDelta)
             {
-                this.lastGroupUpdateHighWatermark = this.GetLastHighWatermarkGroup(importState);
-                this.lastGroupMemberUpdateHighWatermark = this.GetLastHighWatermarkGroupMember(importState);
+                this.lastGroupUpdateHighWatermark = this.GetLastHighWatermarkGroup();
+                this.lastGroupMemberUpdateHighWatermark = this.GetLastHighWatermarkGroupMember();
 
                 filter = $"({filter}) AND (lastUpdated gt \"{this.lastGroupUpdateHighWatermark.ToSmartString()}Z\" or lastMembershipUpdated gt \"{this.lastGroupMemberUpdateHighWatermark.ToSmartString()}Z\")";
             }
 
-            return client.Groups.ListGroups(null, filter, null, OktaMAConfigSection.Configuration.GroupListPageSize);
+            return this.client.Groups.ListGroups(null, filter, null, OktaMAConfigSection.Configuration.GroupListPageSize);
         }
 
-        private ObjectModificationType GetObjectModificationType(IGroup group, bool inDelta)
+        private ObjectModificationType GetObjectModificationType(IGroup group)
         {
-            if (!inDelta)
+            if (!this.context.InDelta)
             {
                 return ObjectModificationType.Add;
             }

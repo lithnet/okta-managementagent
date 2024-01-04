@@ -10,22 +10,23 @@ namespace Lithnet.Okta.ManagementAgent
     internal class SchemaProvider : ISchemaProvider
     {
         private static Logger logger = LogManager.GetCurrentClassLogger();
+        private IOktaClient client;
 
         public Schema GetMmsSchema(SchemaContext context)
         {
-            IOktaClient client = ((OktaConnectionContext)context.ConnectionContext).Client;
+            this.client = ((OktaConnectionContext)context.ConnectionContext).Client;
 
             Schema mmsSchema = new Schema();
-            SchemaType mmsType = SchemaProvider.GetSchemaTypeUser(client);
+            SchemaType mmsType = this.GetSchemaTypeUser();
             mmsSchema.Types.Add(mmsType);
 
-            mmsType = SchemaProvider.GetSchemaTypeGroup(client);
+            mmsType = this.GetSchemaTypeGroup();
             mmsSchema.Types.Add(mmsType);
 
             return mmsSchema;
         }
 
-        private static SchemaType GetSchemaTypeGroup(IOktaClient client)
+        private SchemaType GetSchemaTypeGroup()
         {
             SchemaType mmsType = SchemaType.Create("group", true);
             SchemaAttribute mmsAttribute = SchemaAttribute.CreateAnchorAttribute("id", AttributeType.String, AttributeOperation.ImportOnly);
@@ -54,8 +55,8 @@ namespace Lithnet.Okta.ManagementAgent
 
             return mmsType;
         }
-        
-        private static SchemaType GetSchemaTypeUser(IOktaClient client)
+
+        private SchemaType GetSchemaTypeUser()
         {
             SchemaType mmsType = SchemaType.Create("user", true);
             SchemaAttribute mmsAttribute = SchemaAttribute.CreateAnchorAttribute("id", AttributeType.String, AttributeOperation.ImportOnly);
@@ -96,8 +97,8 @@ namespace Lithnet.Okta.ManagementAgent
 
             mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("suspended", AttributeType.Boolean, AttributeOperation.ImportExport);
             mmsType.Attributes.Add(mmsAttribute);
-            
-            foreach (SchemaAttribute a in SchemaProvider.GetSchemaJson(client))
+
+            foreach (SchemaAttribute a in SchemaProvider.GetSchemaJson(this.client))
             {
                 mmsType.Attributes.Add(a);
             }
@@ -135,7 +136,7 @@ namespace Lithnet.Okta.ManagementAgent
                 yield break;
             }
 
-            if (!(definitions[definitionName] is IDictionary<string, object> definitionObject))
+            if (definitions[definitionName] is not IDictionary<string, object> definitionObject)
             {
                 logger.Info($"The definition for type {definitionName} was null");
                 yield break;
@@ -147,7 +148,7 @@ namespace Lithnet.Okta.ManagementAgent
                 yield break;
             }
 
-            if (!(definitionObject["properties"] is IDictionary<string, object> properties))
+            if (definitionObject["properties"] is not IDictionary<string, object> properties)
             {
                 logger.Info($"The properties definition for {definitionName} were missing");
                 yield break;
@@ -157,7 +158,7 @@ namespace Lithnet.Okta.ManagementAgent
             {
                 string name = property.Key;
 
-                if (!(property.Value is IDictionary<string, object> values))
+                if (property.Value is not IDictionary<string, object> values)
                 {
                     logger.Warn($"Missing value set for property {name}");
                     continue;
@@ -210,7 +211,7 @@ namespace Lithnet.Okta.ManagementAgent
 
         private static AttributeType GetTypeForMultivaluedAttribute(IDictionary<string, object> values)
         {
-            if (!(values["items"] is IDictionary<string, object> items))
+            if (values["items"] is not IDictionary<string, object> items)
             {
                 throw new ArgumentException("Unknown multivalued data type");
             }
