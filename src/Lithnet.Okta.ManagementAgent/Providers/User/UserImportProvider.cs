@@ -1,232 +1,145 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading.Tasks;
-using System.Threading.Tasks.Dataflow;
 using Lithnet.Ecma2Framework;
 using Lithnet.MetadirectoryServices;
+using Microsoft.Extensions.Logging;
+using Microsoft.Extensions.Options;
 using Microsoft.MetadirectoryServices;
-using NLog;
 using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    internal class UserImportProvider : IObjectImportProvider
+    internal class UserImportProvider : ProducerConsumerImportProvider<IUser>
     {
-        private static Logger logger = LogManager.GetCurrentClassLogger();
+        private readonly IOktaClient client;
+        private readonly GlobalOptions globalOptions;
+        private readonly ILogger<UserImportProvider> logger;
+        private long userHighestTicks = 0;
 
-        private IImportContext context;
-        private IOktaClient client;
-
-        public void Initialize(IImportContext context)
+        public UserImportProvider(OktaClientProvider clientProvider, IOptions<GlobalOptions> globalOptions, ILogger<UserImportProvider> logger)
+            : base(logger)
         {
-            this.context = context;
-            this.client = ((OktaConnectionContext)context.ConnectionContext).Client;
+            this.client = clientProvider.GetClient();
+            this.globalOptions = globalOptions.Value;
+            this.logger = logger;
         }
 
-        public void GetCSEntryChanges(SchemaType type)
+        public override Task<bool> CanImportAsync(SchemaType type)
         {
-            AsyncHelper.RunSync(this.GetCSEntryChangesAsync(type), this.context.Token);
+            return Task.FromResult(type.Name == "user");
         }
 
-        public async Task GetCSEntryChangesAsync(SchemaType type)
+        protected override async Task<AttributeChange> CreateAttributeChangeAsync(SchemaAttribute type, ObjectModificationType modificationType, IUser item)
         {
-            try
+            AttributeChange change = null;
+
+            if (type.Name == "provider.name")
             {
-                IAsyncEnumerable<IUser> users = this.GetUserEnumerable();
-                BufferBlock<IUser> queue = new BufferBlock<IUser>();
-
-                Task consumer = this.ConsumeObjects(type, queue);
-
-                // Post source data to the dataflow block.
-                await this.ProduceObjects(users, queue).ConfigureAwait(false);
-
-                // Wait for the consumer to process all data.
-                await consumer.ConfigureAwait(false);
+                change = AttributeChange.CreateAttributeAdd(type.Name, TypeConverter.ConvertData(item.Credentials.Provider.Name, type.DataType));
             }
-            catch (Exception ex)
+            else if (type.Name == "provider.type")
             {
-                logger.Error(ex, "There was an error importing the user data");
-                throw;
+                change = AttributeChange.CreateAttributeAdd(type.Name, TypeConverter.ConvertData(item.Credentials.Provider.Type.Value, type.DataType));
             }
-        }
-
-        private async Task ProduceObjects(IAsyncEnumerable<IUser> users, ITargetBlock<IUser> target)
-        {
-            await users.ForEachAsync(t => target.Post(t));
-            target.Complete();
-        }
-
-        private async Task ConsumeObjects(SchemaType type, ISourceBlock<IUser> source)
-        {
-            long userHighestTicks = 0;
-
-            while (await source.OutputAvailableAsync())
+            else if (type.Name == "suspended")
             {
-                IUser user = source.Receive();
-
-                try
+                change = AttributeChange.CreateAttributeAdd(type.Name, item.Status == UserStatus.Suspended);
+            }
+            else if (type.Name == "enrolledFactors")
+            {
+                List<object> items = new List<object>();
+                await foreach (var factor in item.ListFactors())
                 {
-                    if (user.LastUpdated.HasValue)
-                    {
-                        AsyncHelper.InterlockedMax(ref userHighestTicks, user.LastUpdated.Value.Ticks);
-                    }
-
-                    CSEntryChange c = await this.UserToCSEntryChange(type, user).ConfigureAwait(false);
-
-                    if (c != null)
-                    {
-                        this.context.ImportItems.Add(c, this.context.Token);
-                    }
-                }
-                catch (Exception ex)
-                {
-                    UserImportProvider.logger.Error(ex);
-                    CSEntryChange csentry = CSEntryChange.Create();
-                    csentry.DN = user.Id;
-                    csentry.ErrorCodeImport = MAImportError.ImportErrorCustomContinueRun;
-                    csentry.ErrorDetail = ex.StackTrace;
-                    csentry.ErrorName = ex.Message;
-                    this.context.ImportItems.Add(csentry, this.context.Token);
+                    items.Add($"{factor.Provider}/{factor.FactorType}");
                 }
 
-                this.context.Token.ThrowIfCancellationRequested();
+                if (items.Count > 0)
+                {
+                    change = AttributeChange.CreateAttributeAdd(type.Name, items);
+                }
             }
-
-            string wmv;
-
-            if (userHighestTicks <= 0)
+            else if (type.Name == "availableFactors")
             {
-                wmv = this.context.IncomingWatermark["users"].Value;
+                List<object> items = new List<object>();
+                await foreach (var factor in item.ListSupportedFactors())
+                {
+                    items.Add($"{factor.Provider}/{factor.FactorType}");
+                }
+
+                if (items.Count > 0)
+                {
+                    change = AttributeChange.CreateAttributeAdd(type.Name, items);
+                }
             }
             else
             {
-                wmv = userHighestTicks.ToString();
-            }
+                Resource profile = item.GetProperty<Resource>("profile");
 
-            this.context.OutgoingWatermark.Add(new Watermark("users", wmv, "DateTime"));
-        }
+                object value = item.GetProperty<object>(type.Name) ?? profile.GetProperty<object>(type.Name);
 
-        private async Task<CSEntryChange> UserToCSEntryChange(SchemaType schemaType, IUser user)
-        {
-            Resource profile = user.GetProperty<Resource>("profile");
-            string login = profile.GetProperty<string>("login");
-            logger.Trace($"Creating CSEntryChange for {user.Id}/{login}");
-
-            ObjectModificationType modType = this.GetObjectModificationType(user);
-
-            if (modType == ObjectModificationType.None)
-            {
-                return null;
-            }
-
-            CSEntryChange c = CSEntryChange.Create();
-            c.ObjectType = "user";
-            c.ObjectModificationType = modType;
-            c.AnchorAttributes.Add(AnchorAttribute.Create("id", user.Id));
-            c.DN = user.Id;
-
-            if (modType != ObjectModificationType.Delete)
-            {
-                foreach (SchemaAttribute type in schemaType.Attributes)
+                if (value != null)
                 {
-                    if (type.Name == "provider.name")
+                    if (value is IList list)
                     {
-                        c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, TypeConverter.ConvertData(user.Credentials.Provider.Name, type.DataType)));
-                        continue;
+                        IList<object> values = new List<object>();
+
+                        foreach (object item2 in list)
+                        {
+                            values.Add(TypeConverter.ConvertData(item2, type.DataType));
+                        }
+
+                        change = AttributeChange.CreateAttributeAdd(type.Name, values);
                     }
-                    else if (type.Name == "provider.type")
+                    else
                     {
-                        c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, TypeConverter.ConvertData(user.Credentials.Provider.Type.Value, type.DataType)));
-                        continue;
-                    }
-                    else if (type.Name == "suspended")
-                    {
-                        c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, user.Status == UserStatus.Suspended));
-                        continue;
-                    }
-                    else if (type.Name == "enrolledFactors")
-                    {
-
-                        List<object> items = new List<object>();
-                        foreach (IFactor factor in await user.ListFactors().ToList().ConfigureAwait(false))
-                        {
-                            items.Add($"{factor.Provider}/{factor.FactorType}");
-                        }
-
-                        if (items.Count > 0)
-                        {
-                            c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, items));
-                        }
-
-                        continue;
-                    }
-                    else if (type.Name == "availableFactors")
-                    {
-                        List<object> items = new List<object>();
-                        foreach (IFactor factor in await user.ListSupportedFactors().ToList().ConfigureAwait(false))
-                        {
-                            items.Add($"{factor.Provider}/{factor.FactorType}");
-                        }
-
-                        if (items.Count > 0)
-                        {
-                            c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, items));
-                        }
-
-                        continue;
-                    }
-
-                    object value = user.GetProperty<object>(type.Name) ?? profile.GetProperty<object>(type.Name);
-
-                    if (value != null)
-                    {
-                        if (value is IList list)
-                        {
-                            IList<object> values = new List<object>();
-
-                            foreach (object item in list)
-                            {
-                                values.Add(TypeConverter.ConvertData(item, type.DataType));
-                            }
-
-                            c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, values));
-                        }
-                        else
-                        {
-                            c.AttributeChanges.Add(AttributeChange.CreateAttributeAdd(type.Name, TypeConverter.ConvertData(value, type.DataType)));
-                        }
+                        change = AttributeChange.CreateAttributeAdd(type.Name, TypeConverter.ConvertData(value, type.DataType));
                     }
                 }
             }
 
-            return c;
+            return change;
         }
 
-        private IAsyncEnumerable<IUser> GetUserEnumerable()
+        protected override Task<List<AnchorAttribute>> GetAnchorAttributesAsync(IUser item)
+        {
+            return Task.FromResult(new List<AnchorAttribute> { AnchorAttribute.Create("id", item.Id) });
+        }
+
+        protected override Task<string> GetDNAsync(IUser item)
+        {
+            return Task.FromResult(item.Id);
+        }
+
+        protected override Task<ObjectModificationType> GetObjectModificationTypeAsync(IUser item)
+        {
+            return Task.FromResult(this.GetObjectModificationType(item));
+        }
+
+        protected override IAsyncEnumerable<IUser> GetObjects()
         {
             IAsyncEnumerable<IUser> users;
 
-            if (this.context.InDelta)
+            if (this.ImportContext.InDelta)
             {
-                if (this.context.IncomingWatermark == null)
+                if (this.ImportContext.IncomingWatermark == null)
                 {
                     throw new WarningNoWatermarkException("No watermark was available to perform a delta import");
                 }
 
-                if (!this.context.IncomingWatermark.Contains("users"))
+                if (!this.ImportContext.IncomingWatermark.Contains("users"))
                 {
                     throw new WarningNoWatermarkException("No watermark was available to perform a delta import for the user object type");
                 }
 
-                string value = this.context.IncomingWatermark["users"].Value;
+                string value = this.ImportContext.IncomingWatermark["users"].Value;
                 long ticks = long.Parse(value);
                 DateTime dt = new DateTime(ticks);
 
                 string filter = $"(lastUpdated gt \"{dt.ToSmartString()}Z\")";
 
-                if (this.context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value == "Delete")
+                if (this.globalOptions.UserDeprovisioningAction == "Delete")
                 {
                     filter += " and(status eq \"LOCKED_OUT\" or status eq \"RECOVERY\" or status eq \"STAGED\" or status eq \"PROVISIONED\" or status eq \"ACTIVE\" or status eq \"PASSWORD_EXPIRED\" or status eq \"DEPROVISIONED\" or status eq \"SUSPENDED\")";
                 }
@@ -237,7 +150,7 @@ namespace Lithnet.Okta.ManagementAgent
             {
                 string filter = null;
 
-                if (this.context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value == "Delete")
+                if (this.globalOptions.UserDeprovisioningAction == "Delete")
                 {
                     filter = "(status eq \"LOCKED_OUT\" or status eq \"RECOVERY\" or status eq \"STAGED\" or status eq \"PROVISIONED\" or status eq \"ACTIVE\" or status eq \"PASSWORD_EXPIRED\" or status eq \"DEPROVISIONED\" or status eq \"SUSPENDED\")";
                 }
@@ -248,18 +161,46 @@ namespace Lithnet.Okta.ManagementAgent
             return users;
         }
 
+        protected override Task PrepareObjectForImportAsync(IUser item)
+        {
+            if (item.LastUpdated.HasValue)
+            {
+                AsyncHelper.InterlockedMax(ref this.userHighestTicks, item.LastUpdated.Value.Ticks);
+            }
+
+            return Task.CompletedTask;
+        }
+
+        protected override Task OnCompleteConsumerAsync()
+        {
+            string wmv;
+
+            if (this.userHighestTicks <= 0)
+            {
+                wmv = this.ImportContext.IncomingWatermark["users"].Value;
+            }
+            else
+            {
+                wmv = this.userHighestTicks.ToString();
+            }
+
+            this.ImportContext.OutgoingWatermark.Add(new Watermark("users", wmv, "DateTime"));
+
+            return Task.CompletedTask;
+        }
+
         private ObjectModificationType GetObjectModificationType(IUser user)
         {
-            if (!this.context.InDelta)
+            if (!this.ImportContext.InDelta)
             {
-                if (this.context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value != "Delete")
+                if (this.globalOptions.UserDeprovisioningAction != "Delete")
                 {
                     if ((user.Status?.Value == UserStatus.Deprovisioned ||
                          user.TransitioningToStatus?.Value == UserStatus.Deprovisioned) &&
                         user.TransitioningToStatus?.Value != UserStatus.Provisioned)
                     {
 
-                        logger.Trace($"Discarding {user.Id} as status is deprovisioned");
+                        this.logger.LogTrace($"Discarding {user.Id} as status is deprovisioned");
                         return ObjectModificationType.None;
                     }
                 }
@@ -267,7 +208,7 @@ namespace Lithnet.Okta.ManagementAgent
                 return ObjectModificationType.Add;
             }
 
-            if (this.context.ConfigParameters[ConfigParameterNames.UserDeprovisioningAction].Value != "Delete")
+            if (this.globalOptions.UserDeprovisioningAction != "Delete")
             {
                 if ((user.Status?.Value == UserStatus.Deprovisioned ||
                      user.TransitioningToStatus?.Value == UserStatus.Deprovisioned) &&
@@ -278,11 +219,6 @@ namespace Lithnet.Okta.ManagementAgent
             }
 
             return ObjectModificationType.Replace;
-        }
-
-        public bool CanImport(SchemaType type)
-        {
-            return type.Name == "user";
         }
     }
 }

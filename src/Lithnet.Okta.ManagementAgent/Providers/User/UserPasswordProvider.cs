@@ -1,4 +1,6 @@
 ﻿using System.Security;
+using System.Threading;
+using System.Threading.Tasks;
 using Lithnet.Ecma2Framework;
 using Lithnet.MetadirectoryServices;
 using Microsoft.MetadirectoryServices;
@@ -6,23 +8,28 @@ using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    public class UserPasswordProvider : IObjectPasswordProvider
+    internal class UserPasswordProvider : IObjectPasswordProvider
     {
-        private IPasswordContext context;
-        private IOktaClient client;
+        private readonly IOktaClient client;
+        private PasswordContext context;
 
-        public void Initialize(IPasswordContext context)
+        public UserPasswordProvider(OktaClientProvider clientProvider)
+        {
+            this.client = clientProvider.GetClient();
+        }
+
+        public Task InitializeAsync(PasswordContext context)
         {
             this.context = context;
-            this.client = ((OktaConnectionContext)this.context.ConnectionContext).Client;
+            return Task.CompletedTask;
         }
 
-        public bool CanPerformPasswordOperation(CSEntry csentry)
+        public Task<bool> CanPerformPasswordOperationAsync(CSEntry csentry)
         {
-            return csentry.ObjectType == "user";
+            return Task.FromResult(csentry.ObjectType == "user");
         }
 
-        public void SetPassword(CSEntry csentry, SecureString newPassword, PasswordOptions options)
+        public async Task SetPasswordAsync(CSEntry csentry, SecureString newPassword, PasswordOptions options)
         {
             User u = new User
             {
@@ -35,17 +42,17 @@ namespace Lithnet.Okta.ManagementAgent
                 }
             };
 
-            AsyncHelper.RunSync(this.client.Users.UpdateUserAsync(u, csentry.DN.ToString()));
+            await this.client.Users.UpdateUserAsync(u, csentry.DN.ToString(), CancellationToken.None);
         }
 
-        public void ChangePassword(CSEntry csentry, SecureString oldPassword, SecureString newPassword)
+        public async Task ChangePasswordAsync(CSEntry csentry, SecureString oldPassword, SecureString newPassword)
         {
-            AsyncHelper.RunSync(this.client.Users.ChangePasswordAsync(csentry.DN.ToString(),
+            await this.client.Users.ChangePasswordAsync(csentry.DN.ToString(),
                 new ChangePasswordOptions()
                 {
                     NewPassword = newPassword.ConvertToUnsecureString(),
                     CurrentPassword = oldPassword.ConvertToUnsecureString()
-                }));
+                });
         }
     }
 }
