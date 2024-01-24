@@ -2,6 +2,7 @@
 using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using Lithnet.Ecma2Framework;
 using Lithnet.MetadirectoryServices;
@@ -37,23 +38,18 @@ namespace Lithnet.Okta.ManagementAgent
             return Task.CompletedTask;
         }
 
-        public Task<CSEntryChangeResult> PutCSEntryChangeAsync(CSEntryChange csentry)
-        {
-            return this.PutCSEntryChangeObjectAsync(csentry);
-        }
-
-        private Task<CSEntryChangeResult> PutCSEntryChangeObjectAsync(CSEntryChange csentry)
+        public Task<CSEntryChangeResult> PutCSEntryChangeAsync(CSEntryChange csentry, CancellationToken token)
         {
             switch (csentry.ObjectModificationType)
             {
                 case ObjectModificationType.Add:
-                    return this.PutCSEntryChangeAddAsync(csentry);
+                    return this.PutCSEntryChangeAddAsync(csentry, token);
 
                 case ObjectModificationType.Delete:
-                    return this.PutCSEntryChangeDeleteAsync(csentry);
+                    return this.PutCSEntryChangeDeleteAsync(csentry, token);
 
                 case ObjectModificationType.Update:
-                    return this.PutCSEntryChangeUpdateAsync(csentry);
+                    return this.PutCSEntryChangeUpdateAsync(csentry, token);
 
                 case ObjectModificationType.Unconfigured:
                 case ObjectModificationType.None:
@@ -63,19 +59,19 @@ namespace Lithnet.Okta.ManagementAgent
             }
         }
 
-        private async Task<CSEntryChangeResult> PutCSEntryChangeDeleteAsync(CSEntryChange csentry)
+        private async Task<CSEntryChangeResult> PutCSEntryChangeDeleteAsync(CSEntryChange csentry, CancellationToken token)
         {
-            await this.client.Users.DeactivateUserAsync(csentry.DN, cancellationToken: this.context.Token);
+            await this.client.Users.DeactivateUserAsync(csentry.DN, cancellationToken: token);
 
             if (this.globalOptions.UserDeprovisioningAction == "Delete")
             {
-                await this.client.Users.DeactivateOrDeleteUserAsync(csentry.DN, this.context.Token);
+                await this.client.Users.DeactivateOrDeleteUserAsync(csentry.DN, token);
             }
 
             return CSEntryChangeResult.Create(csentry.Identifier, null, MAExportError.Success);
         }
 
-        private async Task<CSEntryChangeResult> PutCSEntryChangeAddAsync(CSEntryChange csentry)
+        private async Task<CSEntryChangeResult> PutCSEntryChangeAddAsync(CSEntryChange csentry, CancellationToken token)
         {
             AuthenticationProvider provider = new AuthenticationProvider();
             provider.Type = AuthenticationProviderType.Okta;
@@ -129,7 +125,7 @@ namespace Lithnet.Okta.ManagementAgent
                     Profile = profile
                 };
 
-                result = await this.client.Users.CreateUserAsync(options, this.context.Token);
+                result = await this.client.Users.CreateUserAsync(options, token);
             }
             else
             {
@@ -141,17 +137,17 @@ namespace Lithnet.Okta.ManagementAgent
                     Activate = false
                 };
 
-                result = await this.client.Users.CreateUserAsync(options, this.context.Token);
+                result = await this.client.Users.CreateUserAsync(options, token);
             }
 
             if (this.globalOptions.ActivateNewUsers)
             {
-                await this.client.Users.ActivateUserAsync(result.Id, this.globalOptions.SendActivationEmailToNewUsers, this.context.Token);
+                await this.client.Users.ActivateUserAsync(result.Id, this.globalOptions.SendActivationEmailToNewUsers, token);
             }
 
             if (suspend)
             {
-                await result.SuspendAsync(this.context.Token);
+                await result.SuspendAsync(token);
             }
 
             List<AttributeChange> anchorChanges = new List<AttributeChange>();
@@ -160,7 +156,7 @@ namespace Lithnet.Okta.ManagementAgent
             return CSEntryChangeResult.Create(csentry.Identifier, anchorChanges, MAExportError.Success);
         }
 
-        private async Task<CSEntryChangeResult> PutCSEntryChangeUpdateAsync(CSEntryChange csentry)
+        private async Task<CSEntryChangeResult> PutCSEntryChangeUpdateAsync(CSEntryChange csentry, CancellationToken token)
         {
             IUser user = null;
             bool partial = true;
@@ -172,7 +168,7 @@ namespace Lithnet.Okta.ManagementAgent
                 ))
             {
                 this.logger.LogTrace($"Getting user {csentry.DN} for FULL update");
-                user = await this.client.Users.GetUserAsync(csentry.DN, this.context.Token);
+                user = await this.client.Users.GetUserAsync(csentry.DN, token);
                 partial = false;
             }
             else
@@ -199,12 +195,12 @@ namespace Lithnet.Okta.ManagementAgent
                     if (user.Status == UserStatus.Active && suspend)
                     {
                         this.logger.LogInformation($"Suspending user {user.Id}");
-                        await user.SuspendAsync(this.context.Token);
+                        await user.SuspendAsync(token);
                     }
                     else if (user.Status == UserStatus.Suspended && !suspend)
                     {
                         this.logger.LogInformation($"Unsuspending user {user.Id}");
-                        await user.UnsuspendAsync(this.context.Token);
+                        await user.UnsuspendAsync(token);
                     }
                 }
                 else
@@ -227,11 +223,11 @@ namespace Lithnet.Okta.ManagementAgent
 
             if (partial)
             {
-                await this.client.PostAsync<User>($"/api/v1/users/{csentry.DN}", user, this.context.Token);
+                await this.client.PostAsync<User>($"/api/v1/users/{csentry.DN}", user, token);
             }
             else
             {
-                await this.client.Users.UpdateUserAsync(user, csentry.DN, this.context.Token);
+                await this.client.Users.UpdateUserAsync(user, csentry.DN, token);
             }
 
             return CSEntryChangeResult.Create(csentry.Identifier, null, MAExportError.Success);

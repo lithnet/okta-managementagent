@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using Lithnet.Ecma2Framework;
 using Lithnet.MetadirectoryServices;
@@ -17,6 +18,7 @@ namespace Lithnet.Okta.ManagementAgent
         private readonly GlobalOptions globalOptions;
         private readonly ILogger<UserImportProvider> logger;
         private long userHighestTicks = 0;
+        private string initialWatermarkValue;
 
         public UserImportProvider(OktaClientProvider clientProvider, IOptions<GlobalOptions> globalOptions, ILogger<UserImportProvider> logger)
             : base(logger)
@@ -31,7 +33,7 @@ namespace Lithnet.Okta.ManagementAgent
             return Task.FromResult(type.Name == "user");
         }
 
-        protected override async Task<AttributeChange> CreateAttributeChangeAsync(SchemaAttribute type, ObjectModificationType modificationType, IUser item)
+        protected override async Task<AttributeChange> CreateAttributeChangeAsync(SchemaAttribute type, ObjectModificationType modificationType, IUser item, CancellationToken cancellationToken)
         {
             AttributeChange change = null;
 
@@ -63,7 +65,7 @@ namespace Lithnet.Okta.ManagementAgent
             else if (type.Name == "availableFactors")
             {
                 List<object> items = new List<object>();
-                await foreach (var factor in item.ListSupportedFactors())
+                await foreach (var factor in item.ListSupportedFactors().WithCancellation(cancellationToken))
                 {
                     items.Add($"{factor.Provider}/{factor.FactorType}");
                 }
@@ -117,23 +119,16 @@ namespace Lithnet.Okta.ManagementAgent
             return Task.FromResult(this.GetObjectModificationType(item));
         }
 
-        protected override IAsyncEnumerable<IUser> GetObjects()
+        protected override IAsyncEnumerable<IUser> GetObjectsAsync(string watermark, CancellationToken cancellationToken)
         {
             IAsyncEnumerable<IUser> users;
 
+            this.initialWatermarkValue = watermark;
+
             if (this.ImportContext.InDelta)
             {
-                if (this.ImportContext.IncomingWatermark == null)
-                {
-                    throw new WarningNoWatermarkException("No watermark was available to perform a delta import");
-                }
+                string value = watermark ?? throw new WarningNoWatermarkException("No watermark was available to perform a delta import of user objects. Please run a full import");
 
-                if (!this.ImportContext.IncomingWatermark.Contains("users"))
-                {
-                    throw new WarningNoWatermarkException("No watermark was available to perform a delta import for the user object type");
-                }
-
-                string value = this.ImportContext.IncomingWatermark["users"].Value;
                 long ticks = long.Parse(value);
                 DateTime dt = new DateTime(ticks);
 
@@ -161,30 +156,12 @@ namespace Lithnet.Okta.ManagementAgent
             return users;
         }
 
-        protected override Task PrepareObjectForImportAsync(IUser item)
+        protected override Task PrepareObjectForImportAsync(IUser item, CancellationToken cancellationToken)
         {
             if (item.LastUpdated.HasValue)
             {
-                AsyncHelper.InterlockedMax(ref this.userHighestTicks, item.LastUpdated.Value.Ticks);
+                InterlockedHelpers.InterlockedMax(ref this.userHighestTicks, item.LastUpdated.Value.Ticks);
             }
-
-            return Task.CompletedTask;
-        }
-
-        protected override Task OnCompleteConsumerAsync()
-        {
-            string wmv;
-
-            if (this.userHighestTicks <= 0)
-            {
-                wmv = this.ImportContext.IncomingWatermark["users"].Value;
-            }
-            else
-            {
-                wmv = this.userHighestTicks.ToString();
-            }
-
-            this.ImportContext.OutgoingWatermark.Add(new Watermark("users", wmv, "DateTime"));
 
             return Task.CompletedTask;
         }
@@ -199,7 +176,6 @@ namespace Lithnet.Okta.ManagementAgent
                          user.TransitioningToStatus?.Value == UserStatus.Deprovisioned) &&
                         user.TransitioningToStatus?.Value != UserStatus.Provisioned)
                     {
-
                         this.logger.LogTrace($"Discarding {user.Id} as status is deprovisioned");
                         return ObjectModificationType.None;
                     }
@@ -219,6 +195,22 @@ namespace Lithnet.Okta.ManagementAgent
             }
 
             return ObjectModificationType.Replace;
+        }
+
+        public override Task<string> GetOutboundWatermark(SchemaType type, CancellationToken cancellationToken)
+        {
+            string wmv;
+
+            if (this.userHighestTicks <= 0)
+            {
+                wmv = this.initialWatermarkValue;
+            }
+            else
+            {
+                wmv = this.userHighestTicks.ToString();
+            }
+
+            return Task.FromResult(wmv);
         }
     }
 }
