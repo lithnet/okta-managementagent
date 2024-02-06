@@ -31,7 +31,6 @@ namespace Lithnet.Okta.ManagementAgent
 
         [Required]
         [StringParameter(ConfigParameterNames.TenantUrl)]
-        [DefaultValue("https://one.digicert.com")]
         [Url]
         public string TenantUrl { get; set; }
 
