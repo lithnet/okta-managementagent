@@ -126,7 +126,7 @@ stages:
       - task: PublishPipelineArtifact@1
         displayName: Publish artifact
         inputs:
-          targetPath: '$(Build.ArtifactStagingDirectory)/*.msi'
+          targetPath: '$(Build.ArtifactStagingDirectory)/Lithnet.Okta.ManagementAgent.msi'
           publishLocation: 'pipeline'
           artifact: installer
 
