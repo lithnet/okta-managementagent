@@ -1,0 +1,150 @@
+pool:
+  vmImage: 'windows-latest'
+
+variables:
+  - name: buildPlatform 
+    value: 'Any CPU'
+  - name: buildConfiguration
+    value: 'Release'
+  - name: build.version.major
+    value: 2
+  - name: build.version.minor
+    value: 0
+  - name: build.version.revision
+    value: $[counter(format('{0}.{1}', variables['build.version.major'], variables['build.version.minor']), 0)]
+  - name: build.version.suffix
+    value:
+  - name: build.version
+    value: $(build.version.major).$(build.version.minor).$(build.version.revision)$(build.version.suffix)
+  - name: build.versionShort
+    value: $(build.version.major).$(build.version.minor).$(build.version.revision)
+  - name: build.date
+    value: $[format('{0:yyyy}-{0:MM}-{0:dd}T{0:HH}:{0:mm}:{0:ss}', pipeline.startTime)]
+  - group: Azure KeyVault Code Signing
+  
+name: $(build.version.major).$(build.version.minor).$(build.version.revision)$(build.version.suffix)
+trigger: none
+
+stages:
+- stage: build_provider
+  displayName: Build project
+  dependsOn: []
+  jobs:
+    - job: "build_provider_job"
+      displayName: Build project
+      steps:
+      - task: DotNetCoreCLI@2
+        displayName: dotnet build
+        inputs:
+          command: build
+          arguments: '-c $(buildConfiguration) -p:Version=$(build.version) -p:GeneratePackageOnBuild=false'
+          projects: 'src/Lithnet.Okta.ManagementAgent/Lithnet.Okta.ManagementAgent.csproj'
+
+      - task: DotNetCoreCLI@2
+        inputs:
+          command: 'custom'
+          custom: 'tool'
+          arguments: 'update --global azuresigntool'
+        displayName: Install AzureSignTool
+
+      - task: PowerShell@2
+        displayName: 'Sign files with AzureSignTool'
+        inputs:
+          targetType: 'inline'
+          script: |
+            $files = @()
+            $files += (Get-ChildItem -Recurse -Path "$(Build.SourcesDirectory)\Lithnet*.dll").FullName
+
+            write-host "Signing $($files.Length) files:"
+            write-output $files
+
+            $cmdargs = @(
+              "sign",
+              "-d", "Lithnet Okta Management Agent for Microsoft Identity Manager",
+              "-kvu", "$(akv.url)",
+              "-kvi", "$(akv.applicationID)",
+              "-kvs", "$(akv.secret)",
+              "-kvt", "$(akv.tenantId)",
+              "-kvc", "$(akv.certificateName)",
+              "-tr", "http://timestamp.digicert.com",
+              "-td", "sha256"
+            )
+
+            $cmdargs += $files
+        
+            & AzureSignTool $cmdargs
+          failOnStderr: true
+          showWarnings: true
+
+      - task: MSBuild@1
+        inputs:
+            solution: '**/*.wixproj'
+            msbuildArchitecture: 'x64'
+            platform: 'x64'
+            configuration: $(buildConfiguration)
+            msbuildArguments: '/p:Version=$(build.version) /p:OutputPath=$(Build.ArtifactStagingDirectory)'
+        displayName: 'Build installer'
+
+      - task: PowerShell@2
+        displayName: 'Sign MSI with AzureSignTool'
+        inputs:
+          targetType: 'inline'
+          script: |
+            $files = @()
+            $files += (Get-ChildItem -Recurse -Path "$(Build.ArtifactStagingDirectory)\*.msi").FullName
+
+            write-host "Signing $($files.Length) files:"
+            write-output $files
+
+            $cmdargs = @(
+              "sign",
+              "-d", "Lithnet Okta Management Agent for Microsoft Identity Manager",
+              "-kvu", "$(akv.url)",
+              "-kvi", "$(akv.applicationID)",
+              "-kvs", "$(akv.secret)",
+              "-kvt", "$(akv.tenantId)",
+              "-kvc", "$(akv.certificateName)",
+              "-tr", "http://timestamp.digicert.com",
+              "-td", "sha256"
+            )
+
+            $cmdargs += $files
+        
+            & AzureSignTool $cmdargs
+          failOnStderr: true
+          showWarnings: true
+
+      - task: PublishPipelineArtifact@1
+        displayName: Publish artifact
+        inputs:
+          targetPath: '$(Build.ArtifactStagingDirectory)/*.msi'
+          publishLocation: 'pipeline'
+          artifact: installer
+
+# - stage: publish_nuget
+#   displayName: Publish to nuget.org
+#   dependsOn: "build_provider"
+#   jobs:
+#       - deployment: 'PublishPackages'
+#         environment: 'Public nuget feed'
+#         displayName: Publish packages to public nuget feed 
+#         pool:
+#           vmImage: windows-2022 
+#         strategy:
+#           runOnce:
+#             deploy:            
+#               steps:
+#               - publish: 
+#               - checkout: none
+#               - download: current
+#                 artifact: cp
+#               - task: NuGetToolInstaller@1
+#                 inputs:
+#                   versionSpec: '>=4.9.0-0'
+#               - task: NuGetCommand@2
+#                 displayName: 'Publish nuget package to public feed'
+#                 inputs:
+#                   command: 'push'
+#                   packagesToPush: '$(Pipeline.Workspace)/cp/*.nupkg'
+#                   nuGetFeedType: 'external'
+#                   publishFeedCredentials: 'WindowsECMA2FrameworkNuget'
