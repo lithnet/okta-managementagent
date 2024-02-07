@@ -39,6 +39,7 @@ stages:
         inputs:
           command: 'restore'
           projects: 'src/Lithnet.Okta.ManagementAgent.sln'
+          feedsToUse: 'config'
           nugetConfigPath: 'src/nuget.config'
 
       - task: DotNetCoreCLI@2
