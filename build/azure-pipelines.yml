@@ -34,13 +34,10 @@ stages:
       displayName: Build project
       steps:
       - task: NuGetAuthenticate@1
-      - task: DotNetCoreCLI@2
-        displayName: dotnet restore
+      - task: NuGetCommand@2
         inputs:
-          command: 'restore'
-          projects: 'src/Lithnet.Okta.ManagementAgent.sln'
-          feedsToUse: 'config'
-          nugetConfigPath: 'src/nuget.config'
+          restoreSolution: 'src/Lithnet.Okta.ManagementAgent.sln'
+
 
       - task: DotNetCoreCLI@2
         displayName: dotnet build
