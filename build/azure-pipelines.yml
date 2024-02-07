@@ -46,7 +46,7 @@ stages:
         displayName: dotnet build
         inputs:
           command: build
-          arguments: '-c $(buildConfiguration) -p:Version=$(build.version) -p:GeneratePackageOnBuild=false'
+          arguments: '-c $(buildConfiguration) -p:Version=$(build.version) -p:GeneratePackageOnBuild=false --output "$(build.ArtifactStagingDirectory)"'
           projects: 'src/Lithnet.Okta.ManagementAgent/Lithnet.Okta.ManagementAgent.csproj'
 
       - task: DotNetCoreCLI@2
@@ -62,7 +62,7 @@ stages:
           targetType: 'inline'
           script: |
             $files = @()
-            $files += (Get-ChildItem -Recurse -Path "$(Build.SourcesDirectory)\Lithnet*.dll").FullName
+            $files += (Get-ChildItem -Recurse -Path "$(Build.ArtifactStagingDirectory)\Lithnet*.dll").FullName
 
             write-host "Signing $($files.Length) files:"
             write-output $files
