@@ -33,6 +33,7 @@ stages:
     - job: "build_provider_job"
       displayName: Build project
       steps:
+      - task: NuGetAuthenticate@1
       - task: DotNetCoreCLI@2
         displayName: dotnet build
         inputs:
