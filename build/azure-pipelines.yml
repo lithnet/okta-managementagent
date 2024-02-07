@@ -84,11 +84,12 @@ stages:
 
       - task: MSBuild@1
         inputs:
-            solution: '**/*.wixproj'
-            msbuildArchitecture: 'x64'
-            platform: 'x64'
-            configuration: $(buildConfiguration)
-            msbuildArguments: '/p:Version=$(build.version) /p:OutputPath=$(Build.ArtifactStagingDirectory)'
+          solution: '**/*.wixproj'
+          msbuildArchitecture: 'x64'
+          platform: 'x64'
+          configuration: '$(buildConfiguration)'
+          msbuildArguments: '/p:Version=$(build.version) /p:OutputPath=$(Build.ArtifactStagingDirectory)'
+          restoreNugetPackages: true
         displayName: 'Build installer'
 
       - task: PowerShell@2
