@@ -35,6 +35,18 @@ stages:
       steps:
       - task: NuGetAuthenticate@1
       - task: DotNetCoreCLI@2
+        enabled: false
+        displayName: dotnet restore
+        env:
+          NUGET_PLUGIN_HANDSHAKE_TIMEOUT_IN_SECONDS: 60
+          NUGET_PLUGIN_REQUEST_TIMEOUT_IN_SECONDS: 60
+        inputs:
+          command: 'restore'
+          projects: 'src/Lithnet.Okta.ManagementAgent.sln'
+          feedsToUse: 'config'
+          nugetConfigPath: 'src/nuget.config'
+
+      - task: DotNetCoreCLI@2
         displayName: dotnet build
         inputs:
           command: build
