@@ -8,7 +8,7 @@ using NLog.Targets;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    internal class Bootstrapper : IEcmaBootstrapper
+    internal class Startup : IEcmaStartup
     {
         public void Configure(IConfigurationBuilder builder)
         {
