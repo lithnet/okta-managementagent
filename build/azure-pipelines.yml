@@ -159,7 +159,7 @@ stages:
                   #releaseNotesSource: 'filePath' # 'filePath' | 'inline'. Optional. Use when action = create || action = edit. Release notes source. Default: filePath.
                   #releaseNotesFilePath: # string. Optional. Use when releaseNotesSource = filePath. Release notes file path. 
                   #releaseNotesInline: # string. Optional. Use when releaseNotesSource = inline. Release notes. 
-                  assets: '$(Build.ArtifactStagingDirectory)/*.msi' # string. Optional. Use when action = create || action = edit. Assets. Default: $(Build.ArtifactStagingDirectory)/*.
+                  assets: '$(Pipeline.Workspace)/*.msi' # string. Optional. Use when action = create || action = edit. Assets. Default: $(Build.ArtifactStagingDirectory)/*.
                   #assetUploadMode: 'delete' # 'delete' | 'replace'. Optional. Use when action = edit. Asset upload mode. Default: delete.
                   #isDraft: false # boolean. Optional. Use when action = create || action = edit. Draft release. Default: false.
                   isPreRelease: true # boolean. Optional. Use when action = create || action = edit. Pre-release. Default: false.
