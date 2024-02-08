@@ -1,23 +1,28 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 using Lithnet.Ecma2Framework;
+using Microsoft.Extensions.Logging;
 using Microsoft.MetadirectoryServices;
-using NLog;
 using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
     internal class SchemaProvider : ISchemaProvider
     {
-        private static Logger logger = LogManager.GetCurrentClassLogger();
-        private IOktaClient client;
+        private readonly IOktaClient client;
+        private readonly ILogger<SchemaProvider> logger;
 
-        public Schema GetMmsSchema(SchemaContext context)
+        public SchemaProvider(OktaClientProvider clientProvider, ILogger<SchemaProvider> logger)
         {
-            this.client = ((OktaConnectionContext)context.ConnectionContext).Client;
+            this.client = clientProvider.GetClient();
+            this.logger = logger;
+        }
 
+        public async Task<Schema> GetMmsSchemaAsync()
+        {
             Schema mmsSchema = new Schema();
-            SchemaType mmsType = this.GetSchemaTypeUser();
+            SchemaType mmsType = await this.GetSchemaTypeUser();
             mmsSchema.Types.Add(mmsType);
 
             mmsType = this.GetSchemaTypeGroup();
@@ -56,7 +61,7 @@ namespace Lithnet.Okta.ManagementAgent
             return mmsType;
         }
 
-        private SchemaType GetSchemaTypeUser()
+        private async Task<SchemaType> GetSchemaTypeUser()
         {
             SchemaType mmsType = SchemaType.Create("user", true);
             SchemaAttribute mmsAttribute = SchemaAttribute.CreateAnchorAttribute("id", AttributeType.String, AttributeOperation.ImportOnly);
@@ -98,7 +103,7 @@ namespace Lithnet.Okta.ManagementAgent
             mmsAttribute = SchemaAttribute.CreateSingleValuedAttribute("suspended", AttributeType.Boolean, AttributeOperation.ImportExport);
             mmsType.Attributes.Add(mmsAttribute);
 
-            foreach (SchemaAttribute a in SchemaProvider.GetSchemaJson(this.client))
+            await foreach (SchemaAttribute a in this.GetSchemaJsonAsync(this.client))
             {
                 mmsType.Attributes.Add(a);
             }
@@ -106,51 +111,50 @@ namespace Lithnet.Okta.ManagementAgent
             return mmsType;
         }
 
-        public static IEnumerable<SchemaAttribute> GetSchemaJson(IOktaClient client)
+        public async IAsyncEnumerable<SchemaAttribute> GetSchemaJsonAsync(IOktaClient client)
         {
-            Resource result = AsyncHelper.RunSync(client.GetAsync<Resource>(
+            Resource result = await client.GetAsync<Resource>(
                 new HttpRequest
                 {
                     Uri = "/api/v1/meta/schemas/user/default",
-                }));
-
+                });
 
             IDictionary<string, object> definitions = result["definitions"] as IDictionary<string, object>;
 
-            foreach (SchemaAttribute schemaAttribute in SchemaProvider.GetAttributesFromDefinition(definitions, "base"))
+            foreach (SchemaAttribute schemaAttribute in this.GetAttributesFromDefinition(definitions, "base"))
             {
                 yield return schemaAttribute;
             }
 
-            foreach (SchemaAttribute schemaAttribute in SchemaProvider.GetAttributesFromDefinition(definitions, "custom"))
+            foreach (SchemaAttribute schemaAttribute in this.GetAttributesFromDefinition(definitions, "custom"))
             {
                 yield return schemaAttribute;
             }
         }
 
-        private static IEnumerable<SchemaAttribute> GetAttributesFromDefinition(IDictionary<string, object> definitions, string definitionName)
+        private IEnumerable<SchemaAttribute> GetAttributesFromDefinition(IDictionary<string, object> definitions, string definitionName)
         {
             if (!definitions.ContainsKey(definitionName))
             {
-                logger.Error($"The definition for type {definitionName} was not found in the response");
+                this.logger.LogError($"The definition for type {definitionName} was not found in the response");
                 yield break;
             }
 
             if (definitions[definitionName] is not IDictionary<string, object> definitionObject)
             {
-                logger.Info($"The definition for type {definitionName} was null");
+                this.logger.LogInformation($"The definition for type {definitionName} was null");
                 yield break;
             }
 
             if (!definitionObject.ContainsKey("properties"))
             {
-                logger.Error($"The definition for type {definitionName} was did not contain any properties");
+                this.logger.LogError($"The definition for type {definitionName} was did not contain any properties");
                 yield break;
             }
 
             if (definitionObject["properties"] is not IDictionary<string, object> properties)
             {
-                logger.Info($"The properties definition for {definitionName} were missing");
+                this.logger.LogInformation($"The properties definition for {definitionName} were missing");
                 yield break;
             }
 
@@ -160,7 +164,7 @@ namespace Lithnet.Okta.ManagementAgent
 
                 if (property.Value is not IDictionary<string, object> values)
                 {
-                    logger.Warn($"Missing value set for property {name}");
+                    this.logger.LogWarning($"Missing value set for property {name}");
                     continue;
                 }
 
@@ -174,7 +178,7 @@ namespace Lithnet.Okta.ManagementAgent
                     type = AttributeType.Reference;
                 }
 
-                logger.Info($"Got attribute {name} of type {type} and is mv {ismultivalued}");
+                this.logger.LogInformation($"Got attribute {name} of type {type} and is mv {ismultivalued}");
 
                 if (ismultivalued)
                 {
@@ -251,15 +255,15 @@ namespace Lithnet.Okta.ManagementAgent
             }
         }
 
-        private static void DumpDictionary(IDictionary<string, object> d1)
+        private void DumpDictionary(IDictionary<string, object> d1)
         {
             foreach (KeyValuePair<string, object> item in d1)
             {
-                logger.Info($"{item.Key}: {item.Value}");
+                this.logger.LogInformation($"{item.Key}: {item.Value}");
 
                 if (item.Value is IDictionary<string, object> d2)
                 {
-                    DumpDictionary(d2);
+                    this.DumpDictionary(d2);
                 }
             }
         }

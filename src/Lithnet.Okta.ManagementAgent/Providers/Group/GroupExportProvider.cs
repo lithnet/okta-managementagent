@@ -1,48 +1,48 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
 using Lithnet.Ecma2Framework;
 using Lithnet.MetadirectoryServices;
+using Microsoft.Extensions.Logging;
 using Microsoft.MetadirectoryServices;
-using NLog;
 using Okta.Sdk;
 
 namespace Lithnet.Okta.ManagementAgent
 {
     internal class GroupExportProvider : IObjectExportProvider
     {
-        private static Logger logger = LogManager.GetCurrentClassLogger();
+        private readonly IOktaClient client;
+        private readonly ILogger<GroupExportProvider> logger;
 
-        private IExportContext context;
-        private IOktaClient client;
-
-        public void Initialize(IExportContext context)
+        public GroupExportProvider(OktaClientProvider clientProvider, ILogger<GroupExportProvider> logger)
         {
-            this.context = context;
-            this.client = ((OktaConnectionContext)context.ConnectionContext).Client;
+            this.client = clientProvider.GetClient();
+            this.logger = logger;
         }
 
-        public bool CanExport(CSEntryChange csentry)
+        public Task InitializeAsync(ExportContext context)
         {
-            return csentry.ObjectType == "group";
+            return Task.CompletedTask;
         }
 
-        public CSEntryChangeResult PutCSEntryChange(CSEntryChange csentry)
+        public Task<bool> CanExportAsync(CSEntryChange csentry)
         {
-            return this.PutCSEntryChangeObject(csentry);
+            return Task.FromResult(csentry.ObjectType == "group");
         }
 
-        public CSEntryChangeResult PutCSEntryChangeObject(CSEntryChange csentry)
+        public Task<CSEntryChangeResult> PutCSEntryChangeAsync(CSEntryChange csentry, CancellationToken token)
         {
             switch (csentry.ObjectModificationType)
             {
                 case ObjectModificationType.Add:
-                    return this.PutCSEntryChangeAdd(csentry);
+                    return this.PutCSEntryChangeAddAsync(csentry, token);
 
                 case ObjectModificationType.Delete:
-                    return this.PutCSEntryChangeDelete(csentry);
+                    return this.PutCSEntryChangeDeleteAsync(csentry, token);
 
                 case ObjectModificationType.Update:
-                    return this.PutCSEntryChangeUpdate(csentry);
+                    return this.PutCSEntryChangeUpdateAsync(csentry, token);
 
                 default:
                 case ObjectModificationType.None:
@@ -52,14 +52,13 @@ namespace Lithnet.Okta.ManagementAgent
             }
         }
 
-        private CSEntryChangeResult PutCSEntryChangeDelete(CSEntryChange csentry)
+        private async Task<CSEntryChangeResult> PutCSEntryChangeDeleteAsync(CSEntryChange csentry, CancellationToken token)
         {
-            AsyncHelper.RunSync(this.client.Groups.DeleteGroupAsync(csentry.DN, this.context.Token), this.context.Token);
-
+            await this.client.Groups.DeleteGroupAsync(csentry.DN, token);
             return CSEntryChangeResult.Create(csentry.Identifier, null, MAExportError.Success);
         }
 
-        private CSEntryChangeResult PutCSEntryChangeAdd(CSEntryChange csentry)
+        private async Task<CSEntryChangeResult> PutCSEntryChangeAddAsync(CSEntryChange csentry, CancellationToken token)
         {
             CreateGroupOptions options = new CreateGroupOptions();
             IList<string> members = new List<string>();
@@ -79,12 +78,12 @@ namespace Lithnet.Okta.ManagementAgent
                     members = change.GetValueAdds<string>();
                 }
             }
-            
-            IGroup result = AsyncHelper.RunSync(this.client.Groups.CreateGroupAsync(options, this.context.Token), this.context.Token);
+
+            IGroup result = await this.client.Groups.CreateGroupAsync(options, token);
 
             foreach (string member in members)
             {
-                AsyncHelper.RunSync(this.client.Groups.AddUserToGroupAsync(result.Id, member, this.context.Token), this.context.Token);
+                await this.client.Groups.AddUserToGroupAsync(result.Id, member, token);
             }
 
             List<AttributeChange> anchorChanges = new List<AttributeChange>();
@@ -93,7 +92,7 @@ namespace Lithnet.Okta.ManagementAgent
             return CSEntryChangeResult.Create(csentry.Identifier, anchorChanges, MAExportError.Success);
         }
 
-        private CSEntryChangeResult PutCSEntryChangeUpdate(CSEntryChange csentry)
+        private async Task<CSEntryChangeResult> PutCSEntryChangeUpdateAsync(CSEntryChange csentry, CancellationToken token)
         {
             IGroup group = null;
 
@@ -103,7 +102,7 @@ namespace Lithnet.Okta.ManagementAgent
                 {
                     if (group == null)
                     {
-                        group = AsyncHelper.RunSync(this.client.Groups.GetGroupAsync(csentry.DN, null, this.context.Token), this.context.Token);
+                        group = await this.client.Groups.GetGroupAsync(csentry.DN, token);
                     }
 
                     group.Profile.Name = change.GetValueAdd<string>();
@@ -112,7 +111,7 @@ namespace Lithnet.Okta.ManagementAgent
                 {
                     if (group == null)
                     {
-                        group = AsyncHelper.RunSync(this.client.Groups.GetGroupAsync(csentry.DN, null, this.context.Token), this.context.Token);
+                        group = await this.client.Groups.GetGroupAsync(csentry.DN, token);
                     }
 
                     group.Profile.Description = change.GetValueAdd<string>();
@@ -121,19 +120,19 @@ namespace Lithnet.Okta.ManagementAgent
                 {
                     foreach (string add in change.GetValueAdds<string>())
                     {
-                        AsyncHelper.RunSync(this.client.Groups.AddUserToGroupAsync(csentry.DN, add, this.context.Token), this.context.Token);
+                        await this.client.Groups.AddUserToGroupAsync(csentry.DN, add, token);
                     }
 
                     foreach (string delete in change.GetValueDeletes<string>())
                     {
-                        AsyncHelper.RunSync(this.client.Groups.RemoveGroupUserAsync(csentry.DN, delete, this.context.Token), this.context.Token);
+                        await this.client.Groups.RemoveUserFromGroupAsync(csentry.DN, delete, token);
                     }
                 }
             }
 
             if (group != null)
             {
-                AsyncHelper.RunSync(this.client.Groups.UpdateGroupAsync(group, csentry.DN, this.context.Token), this.context.Token);
+                await this.client.Groups.UpdateGroupAsync(group, csentry.DN, token);
             }
 
             return CSEntryChangeResult.Create(csentry.Identifier, null, MAExportError.Success);

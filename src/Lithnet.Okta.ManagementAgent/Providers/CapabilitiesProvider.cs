@@ -1,14 +1,14 @@
-﻿using System.Collections.ObjectModel;
+﻿using System.Threading.Tasks;
 using Lithnet.Ecma2Framework;
 using Microsoft.MetadirectoryServices;
 
 namespace Lithnet.Okta.ManagementAgent
 {
-    public class CapabilitiesProvider : ICapabilitiesProvider
+    internal class CapabilitiesProvider : ICapabilitiesProvider
     {
-        public MACapabilities GetCapabilitiesEx(KeyedCollection<string, ConfigParameter> configParameters)
+        public Task<MACapabilities> GetCapabilitiesAsync(IConfigParameters configParameters)
         {
-            return new MACapabilities
+            return Task.FromResult(new MACapabilities
             {
                 ConcurrentOperation = true,
                 DeltaImport = true,
@@ -23,7 +23,7 @@ namespace Lithnet.Okta.ManagementAgent
                 ObjectConfirmation = MAObjectConfirmation.Normal,
                 ObjectRename = false,
                 SupportExport = true
-            };
+            });
         }
     }
 }
