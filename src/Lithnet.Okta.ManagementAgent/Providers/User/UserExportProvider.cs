@@ -61,7 +61,12 @@ namespace Lithnet.Okta.ManagementAgent
 
         private async Task<CSEntryChangeResult> PutCSEntryChangeDeleteAsync(CSEntryChange csentry, CancellationToken token)
         {
-            await this.client.Users.DeactivateUserAsync(csentry.DN, cancellationToken: token);
+            var user = await this.client.Users.GetUserAsync(csentry.DN, token);
+
+            if (user.Status != UserStatus.Deprovisioned)
+            {
+                await this.client.Users.DeactivateUserAsync(csentry.DN, cancellationToken: token);
+            }
 
             if (this.globalOptions.UserDeprovisioningAction == "Delete")
             {
