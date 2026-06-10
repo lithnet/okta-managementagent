@@ -49,7 +49,10 @@ namespace Lithnet.Okta.ManagementAgent
 
                 var items = this.client.GetCollection<User>($"/api/v1/groups/{item.Id}/skinny_users");
 
-                await items.ForEachAsync(u => members.Add(u.Id), cancellationToken).ConfigureAwait(false);
+                await foreach (var u in items.WithCancellation(cancellationToken))
+                {
+                    members.Add(u.Id);
+                }
 
                 if (modificationType == ObjectModificationType.Update)
                 {
