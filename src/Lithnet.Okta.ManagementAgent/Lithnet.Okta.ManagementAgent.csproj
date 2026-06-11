@@ -23,7 +23,7 @@
 
 	<ItemGroup>
 		<PackageReference Include="Costura.Fody" Version="5.7.0" PrivateAssets="all" />
-		<PackageReference Include="Lithnet.Ecma2Framework" Version="2.0.48" />
+		<PackageReference Include="Lithnet.Ecma2Framework" Version="2.0.49" />
 		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.9" />
 		<PackageReference Include="Lithnet.MetadirectoryServices" version="2.0.5" />
 		<PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.19.1" />
