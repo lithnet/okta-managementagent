@@ -1,48 +1,26 @@
-﻿using System.Configuration;
-
 namespace Lithnet.Okta.ManagementAgent
 {
-    internal class OktaMAConfigSection : ConfigurationSection
+    /// <summary>
+    /// Hidden, advanced override settings for the Okta MA. In the net48 in-process v2 these lived in the
+    /// host process's app.config under the &lt;lithnet-okta-ma&gt; ConfigurationSection. On the v3 net8
+    /// worker there is no app.config ConfigurationSection equivalent, so these overrides are read from the
+    /// worker's appsettings.json under the "OktaMA" section and bound to this options class via
+    /// <c>IOptions&lt;OktaMAConfigSection&gt;</c>. None of these are required inputs; each has a sensible
+    /// default that matches the previous ConfigurationSection default, so an absent appsettings.json or an
+    /// absent "OktaMA" section yields the same behaviour as an unconfigured v2 install.
+    /// </summary>
+    internal class OktaMAConfigSection
     {
-        private const string SectionName = "lithnet-okta-ma";
-        private const string PropHttpDebugEnabled = "http-debug-enabled";
-        private const string PropProxyUrl = "proxy-url";
-        private const string PropUserListPageSize = "user-list-page-size";
-        private const string PropGroupListPageSize = "group-list-page-size";
-        private const string PropConnectionLimit = "connection-limit";
+        public const string SectionName = "OktaMA";
 
-        internal static OktaMAConfigSection GetConfiguration()
-        {
-            OktaMAConfigSection section = (OktaMAConfigSection)ConfigurationManager.GetSection(SectionName);
+        public bool HttpDebugEnabled { get; set; } = false;
 
-            if (section == null)
-            {
-                section = new OktaMAConfigSection();
-            }
+        public string ProxyUrl { get; set; } = null;
 
-            return section;
-        }
+        public int ConnectionLimit { get; set; } = 1000;
 
-        internal static OktaMAConfigSection Configuration { get; private set; }
+        public int UserListPageSize { get; set; } = 200;
 
-        static OktaMAConfigSection()
-        {
-            OktaMAConfigSection.Configuration = OktaMAConfigSection.GetConfiguration();
-        }
-
-        [ConfigurationProperty(OktaMAConfigSection.PropHttpDebugEnabled, IsRequired = false, DefaultValue = false)]
-        public bool HttpDebugEnabled => (bool)this[OktaMAConfigSection.PropHttpDebugEnabled];
-
-        [ConfigurationProperty(OktaMAConfigSection.PropProxyUrl, IsRequired = false, DefaultValue = null)]
-        public string ProxyUrl => (string)this[OktaMAConfigSection.PropProxyUrl];
-
-        [ConfigurationProperty(OktaMAConfigSection.PropConnectionLimit, IsRequired = false, DefaultValue = 1000)]
-        public int ConnectionLimit => (int)this[OktaMAConfigSection.PropConnectionLimit];
-
-        [ConfigurationProperty(OktaMAConfigSection.PropUserListPageSize, IsRequired = false, DefaultValue = 200)]
-        public int UserListPageSize => (int)this[OktaMAConfigSection.PropUserListPageSize];
-
-        [ConfigurationProperty(OktaMAConfigSection.PropGroupListPageSize, IsRequired = false, DefaultValue = -1)]
-        public int GroupListPageSize => (int)this[OktaMAConfigSection.PropGroupListPageSize];
+        public int GroupListPageSize { get; set; } = -1;
     }
 }

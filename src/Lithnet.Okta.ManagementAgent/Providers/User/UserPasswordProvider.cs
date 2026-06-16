@@ -1,8 +1,9 @@
-﻿using System.Security;
+using System;
+using System.Runtime.InteropServices;
+using System.Security;
 using System.Threading;
 using System.Threading.Tasks;
 using Lithnet.Ecma2Framework;
-using Lithnet.MetadirectoryServices;
 using Microsoft.MetadirectoryServices;
 using Okta.Sdk;
 
@@ -37,22 +38,44 @@ namespace Lithnet.Okta.ManagementAgent
                 {
                     Password = new PasswordCredential()
                     {
-                        Value = newPassword.ConvertToUnsecureString()
+                        Value = ConvertToUnsecureString(newPassword)
                     }
                 }
             };
 
-            await this.client.Users.UpdateUserAsync(u, csentry.DN.ToString(), CancellationToken.None);
+            string dn = csentry.DN == null ? null : csentry.DN.ToString();
+            await this.client.Users.UpdateUserAsync(u, dn, CancellationToken.None);
         }
 
         public async Task ChangePasswordAsync(CSEntry csentry, SecureString oldPassword, SecureString newPassword)
         {
-            await this.client.Users.ChangePasswordAsync(csentry.DN.ToString(),
+            string dn = csentry.DN == null ? null : csentry.DN.ToString();
+            await this.client.Users.ChangePasswordAsync(dn,
                 new ChangePasswordOptions()
                 {
-                    NewPassword = newPassword.ConvertToUnsecureString(),
-                    CurrentPassword = oldPassword.ConvertToUnsecureString()
+                    NewPassword = ConvertToUnsecureString(newPassword),
+                    CurrentPassword = ConvertToUnsecureString(oldPassword)
                 });
+        }
+
+        private static string ConvertToUnsecureString(SecureString securePassword)
+        {
+            if (securePassword == null)
+            {
+                throw new ArgumentNullException(nameof(securePassword));
+            }
+
+            IntPtr unmanagedString = IntPtr.Zero;
+
+            try
+            {
+                unmanagedString = Marshal.SecureStringToGlobalAllocUnicode(securePassword);
+                return Marshal.PtrToStringUni(unmanagedString);
+            }
+            finally
+            {
+                Marshal.ZeroFreeGlobalAllocUnicode(unmanagedString);
+            }
         }
     }
 }

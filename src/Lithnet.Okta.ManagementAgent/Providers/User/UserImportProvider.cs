@@ -4,7 +4,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Lithnet.Ecma2Framework;
-using Lithnet.MetadirectoryServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.MetadirectoryServices;
@@ -16,15 +15,17 @@ namespace Lithnet.Okta.ManagementAgent
     {
         private readonly IOktaClient client;
         private readonly GlobalOptions globalOptions;
+        private readonly OktaMAConfigSection maConfig;
         private readonly ILogger<UserImportProvider> logger;
         private long userHighestTicks = 0;
         private string initialWatermarkValue;
 
-        public UserImportProvider(OktaClientProvider clientProvider, IOptions<GlobalOptions> globalOptions, ILogger<UserImportProvider> logger)
+        public UserImportProvider(OktaClientProvider clientProvider, IOptions<GlobalOptions> globalOptions, IOptions<OktaMAConfigSection> maConfig, ILogger<UserImportProvider> logger)
             : base(logger)
         {
             this.client = clientProvider.GetClient();
             this.globalOptions = globalOptions.Value;
+            this.maConfig = maConfig.Value;
             this.logger = logger;
         }
 
@@ -139,7 +140,7 @@ namespace Lithnet.Okta.ManagementAgent
                     filter += " and(status eq \"LOCKED_OUT\" or status eq \"RECOVERY\" or status eq \"STAGED\" or status eq \"PROVISIONED\" or status eq \"ACTIVE\" or status eq \"PASSWORD_EXPIRED\" or status eq \"DEPROVISIONED\" or status eq \"SUSPENDED\")";
                 }
 
-                users = this.client.Users.ListUsers(null, null, OktaMAConfigSection.Configuration.UserListPageSize, filter);
+                users = this.client.Users.ListUsers(null, null, this.maConfig.UserListPageSize, filter);
             }
             else
             {
@@ -150,7 +151,7 @@ namespace Lithnet.Okta.ManagementAgent
                     filter = "(status eq \"LOCKED_OUT\" or status eq \"RECOVERY\" or status eq \"STAGED\" or status eq \"PROVISIONED\" or status eq \"ACTIVE\" or status eq \"PASSWORD_EXPIRED\" or status eq \"DEPROVISIONED\" or status eq \"SUSPENDED\")";
                 }
 
-                users = this.client.Users.ListUsers(null, null, OktaMAConfigSection.Configuration.UserListPageSize, filter);
+                users = this.client.Users.ListUsers(null, null, this.maConfig.UserListPageSize, filter);
             }
 
             return users;
