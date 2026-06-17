@@ -5,7 +5,7 @@ using Lithnet.Ecma2Framework;
 namespace Lithnet.Okta.ManagementAgent
 {
     [ConnectivityConfiguration]
-    internal class ConnectivityOptions
+    public class ConnectivityOptions
     {
         [LabelParameter("Logging settings")]
 

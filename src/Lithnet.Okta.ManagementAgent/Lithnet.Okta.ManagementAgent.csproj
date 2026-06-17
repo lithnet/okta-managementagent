@@ -1,8 +1,8 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<OutputType>Exe</OutputType>
-		<!-- net8.0-windows (not plain net8.0): the worker only ever runs inside the Windows MIM
+		<OutputType>Library</OutputType>
+		<!-- net8.0-windows (not plain net8.0): the MA only ever runs inside the Windows MIM
 		     Synchronization Service host, and it writes to the Windows Event Log. Declaring the Windows
 		     platform makes that explicit and lets the Windows-only EventLog logger compile without a
 		     platform-compatibility (CA1416) warning, rather than suppressing a legitimate diagnostic. -->
@@ -25,10 +25,11 @@
 
 	<ItemGroup>
 		<!-- Host MMS assembly: the providers name real MMS types (Schema, SchemaType, AttributeChange,
-		     CSEntryChange, MACapabilities, WarningNoWatermarkException, etc.). This project is built as an
-		     Exe (it carries the generated worker Main) and is executed at build time for the manifest-emit
-		     step, so it needs the MMS DLL alongside its own output at runtime - Private=true. The HintPath
-		     points at the v3 framework repo's reference copy. -->
+		     CSEntryChange, MACapabilities, WarningNoWatermarkException, etc.). This project is a Library; the
+		     framework targets build the out-of-process host exe (Ecma2Host.exe) as a separate build unit that
+		     ProjectReferences this MA and inherits this MMS reference (and the full NuGet closure below)
+		     through its transitive closure - Private=true so the facade DLL is carried into the host's output.
+		     The HintPath points at the v3 framework repo's reference copy. -->
 		<Reference Include="Microsoft.MetadirectoryServicesEx">
 			<HintPath>..\..\..\ecma2-framework\src\Lithnet.Ecma2Framework\lib\Microsoft.MetadirectoryServicesEx.dll</HintPath>
 			<Private>true</Private>
@@ -36,19 +37,14 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- Framework (provider/startup contracts + ported helpers) + Worker (WorkerEntryPoint runtime the
-		     generated Main calls into). The Serialization wire assembly is NOT referenced: the password
-		     provider takes the host Microsoft.MetadirectoryServices.CSEntry, not a transport type, and the
-		     Serialization.dll is supplied transitively (runtime only) through the Worker reference. -->
+		<!-- Framework (provider/startup contracts + ported helpers) + Hosting (WorkerEntryPoint runtime). The
+		     generated worker Main lives in the host exe (built by the framework targets), not in this library;
+		     this MA carries no source generator analyzer reference and no generated code. The Serialization
+		     wire assembly is NOT referenced: the password provider takes the host
+		     Microsoft.MetadirectoryServices.CSEntry, not a transport type, and the Serialization.dll is
+		     supplied transitively (runtime only) through the Hosting reference. -->
 		<ProjectReference Include="..\..\..\ecma2-framework\src\Lithnet.Ecma2Framework\Lithnet.Ecma2Framework.csproj" />
 		<ProjectReference Include="..\..\..\ecma2-framework\src\Lithnet.Ecma2Framework.Hosting\Lithnet.Ecma2Framework.Hosting.csproj" />
-
-		<!-- The framework source generator as a build-time analyzer (worker role; Ecma2GeneratorRole is left
-		     unset so it defaults to 'worker'). It emits the worker Main + config registration provider into
-		     this assembly. -->
-		<ProjectReference Include="..\..\..\ecma2-framework\src\Lithnet.Ecma2Framework.SourceGeneration\Lithnet.Ecma2Framework.SourceGeneration.csproj"
-		                  OutputItemType="Analyzer"
-		                  ReferenceOutputAssembly="false" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -72,10 +68,12 @@
 		</None>
 	</ItemGroup>
 
-	<!-- Importing the framework targets does two things: (1) derives the effective shim name (defaults to
-	     '<AssemblyName>.Ecma2' = Lithnet.Okta.ManagementAgent.Ecma2) and makes it visible to the worker-role
-	     generator, and (2) after Build, compiles the net48 shim in an isolated obj/bin and copies it next to
-	     the worker output, then emits the Packaged-MA manifest when opted in via PackagedMa.props. -->
+	<!-- Importing the framework targets does two things after this library builds: (1) builds the
+	     out-of-process host exe (Ecma2Host.exe) as a separate build unit that ProjectReferences this MA and
+	     copies its full transitive closure (Okta.Sdk, Newtonsoft.Json, etc.) into a Host\ subfolder of this
+	     project's output, and (2) compiles the net48 shim
+	     (Lithnet.Okta.ManagementAgent.Ecma2.dll) in an isolated obj/bin and copies it next to this project's
+	     output, then emits the Packaged-MA manifest when opted in via PackagedMa.props. -->
 	<Import Project="..\..\..\ecma2-framework\src\Lithnet.Ecma2Framework\build\Lithnet.Ecma2Framework.targets" />
 
 </Project>
