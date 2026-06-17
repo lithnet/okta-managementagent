@@ -26,10 +26,12 @@
 	<ItemGroup>
 		<!-- Host MMS assembly: the providers name real MMS types (Schema, SchemaType, AttributeChange,
 		     CSEntryChange, MACapabilities, WarningNoWatermarkException, etc.). This project is a Library; the
-		     framework targets build the out-of-process host exe (Ecma2Host.exe) as a separate build unit that
-		     ProjectReferences this MA and inherits this MMS reference (and the full NuGet closure below)
-		     through its transitive closure - Private=true so the facade DLL is carried into the host's output.
-		     The HintPath points at the v3 framework repo's reference copy. -->
+		     framework build tooling (shipped in the Lithnet.Ecma2Framework package, auto-imported below) builds
+		     the out-of-process host exe (Ecma2Host.exe) as a separate build unit that ProjectReferences this MA
+		     and inherits this MMS reference (and the full NuGet closure below) through its transitive closure -
+		     Private=true so the facade DLL is carried into the host's output. For local dev the HintPath points
+		     at the side-by-side framework repo's reference copy; a real customer points it at their MIM install
+		     (or at the copy the framework package ships in build\ref\, exposed as $(Ecma2HostMmsPath)). -->
 		<Reference Include="Microsoft.MetadirectoryServicesEx">
 			<HintPath>..\..\..\ecma2-framework\src\Lithnet.Ecma2Framework\lib\Microsoft.MetadirectoryServicesEx.dll</HintPath>
 			<Private>true</Private>
@@ -37,14 +39,16 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- Framework (provider/startup contracts + ported helpers) + Hosting (WorkerEntryPoint runtime). The
-		     generated worker Main lives in the host exe (built by the framework targets), not in this library;
-		     this MA carries no source generator analyzer reference and no generated code. The Serialization
-		     wire assembly is NOT referenced: the password provider takes the host
-		     Microsoft.MetadirectoryServices.CSEntry, not a transport type, and the Serialization.dll is
-		     supplied transitively (runtime only) through the Hosting reference. -->
-		<ProjectReference Include="..\..\..\ecma2-framework\src\Lithnet.Ecma2Framework\Lithnet.Ecma2Framework.csproj" />
-		<ProjectReference Include="..\..\..\ecma2-framework\src\Lithnet.Ecma2Framework.Hosting\Lithnet.Ecma2Framework.Hosting.csproj" />
+		<!-- The Lithnet.Ecma2Framework holding (meta) package - the package a management agent author installs.
+		     It pulls the Sdk (the provider/startup contracts + ported helpers, this MA's compile reference) and
+		     the Hosting runtime (the out-of-process worker, supplied transitively into the host build), and it
+		     auto-imports the build\ host/shim toolchain that produces Ecma2Host.exe + the net48 shim after this
+		     library builds (see the comment at the end of this file). The generated worker Main lives in the host
+		     exe, not in this library; this MA carries no source generator analyzer reference and no generated
+		     code. The Serialization wire assembly is NOT referenced directly: the password provider takes the
+		     host Microsoft.MetadirectoryServices.CSEntry, not a transport type, and Serialization.dll is supplied
+		     transitively (runtime only) through the Hosting dependency. -->
+		<PackageReference Include="Lithnet.Ecma2Framework" Version="3.0.0" />
 	</ItemGroup>
 
 	<ItemGroup>
@@ -68,12 +72,13 @@
 		</None>
 	</ItemGroup>
 
-	<!-- Importing the framework targets does two things after this library builds: (1) builds the
-	     out-of-process host exe (Ecma2Host.exe) as a separate build unit that ProjectReferences this MA and
-	     copies its full transitive closure (Okta.Sdk, Newtonsoft.Json, etc.) into a Host\ subfolder of this
-	     project's output, and (2) compiles the net48 shim
-	     (Lithnet.Okta.ManagementAgent.Ecma2.dll) in an isolated obj/bin and copies it next to this project's
-	     output, then emits the Packaged-MA manifest when opted in via PackagedMa.props. -->
-	<Import Project="..\..\..\ecma2-framework\src\Lithnet.Ecma2Framework\build\Lithnet.Ecma2Framework.targets" />
+	<!-- The Lithnet.Ecma2Framework package referenced above auto-imports its build\Lithnet.Ecma2Framework.props
+	     and build\Lithnet.Ecma2Framework.targets from the package's build\ folder - no explicit <Import> needed.
+	     Those targets do two things after this library builds: (1) build the out-of-process host exe
+	     (Ecma2Host.exe) as a separate build unit that ProjectReferences this MA and copies its full transitive
+	     closure (Okta.Sdk, Newtonsoft.Json, the framework Sdk/Hosting/Serialization, StreamJsonRpc, etc.) into a
+	     Host\ subfolder of this project's output, and (2) compile the net48 shim
+	     (Lithnet.Okta.ManagementAgent.Ecma2.dll) in an isolated obj/bin and copy it next to this project's
+	     output, then emit the Packaged-MA manifest when opted in via PackagedMa.props. -->
 
 </Project>
