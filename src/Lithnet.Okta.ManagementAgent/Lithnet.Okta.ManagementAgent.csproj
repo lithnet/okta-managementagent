@@ -29,9 +29,11 @@
 		     framework build tooling (shipped in the Lithnet.Ecma2Framework package, auto-imported below) builds
 		     the out-of-process host exe (Ecma2Host.exe) as a separate build unit that ProjectReferences this MA
 		     and inherits this MMS reference (and the full NuGet closure below) through its transitive closure -
-		     Private=true so the facade DLL is carried into the host's output. For local dev the HintPath points
-		     at the side-by-side framework repo's reference copy; a real customer points it at their MIM install
-		     (or at the copy the framework package ships in build\ref\, exposed as $(Ecma2HostMmsPath)). -->
+		     Private=true so the facade DLL is carried into the host's output. Microsoft.MetadirectoryServicesEx.dll
+		     is Microsoft's assembly and is NOT shipped in the framework package: this consumer references it from
+		     its own MIM install. For local dev the HintPath points at the side-by-side framework repo's reference
+		     copy; a real customer points it at their MIM (Synchronization Service) install. The framework derives
+		     the host/shim build's MMS path from THIS resolved reference (it ships no copy and looks nothing up). -->
 		<Reference Include="Microsoft.MetadirectoryServicesEx">
 			<HintPath>..\..\..\ecma2-framework\src\Lithnet.Ecma2Framework\lib\Microsoft.MetadirectoryServicesEx.dll</HintPath>
 			<Private>true</Private>
