@@ -2,7 +2,7 @@
 
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
-		<TargetFramework>net8.0-windows</TargetFramework>
+		<TargetFramework>net10.0-windows</TargetFramework>
 		<Company>Lithnet Pty Ltd</Company>
 		<SatelliteResourceLanguages>en</SatelliteResourceLanguages>
 		<Product>Okta Management Agent for Microsoft Identity Manager</Product>
@@ -17,6 +17,13 @@
 		     facades (proven dependable). MSB3270: processor-architecture mismatch warning for the same
 		     AnyCPU/net4x reference. Both are expected and suppressed. -->
 		<NoWarn>$(NoWarn);NU1701;MSB3270</NoWarn>
+
+		<!-- Publish the out-of-process worker SELF-CONTAINED + ReadyToRun: `dotnet publish` of this consumer
+		     bundles the .NET runtime into the worker output (no machine .NET 10 install required on the MIM
+		     server) and crossgens it to R2R for faster cold start. `dotnet build` is unaffected - it still
+		     produces the fast, framework-dependent worker for the inner dev loop. -->
+		<Ecma2WorkerSelfContained>true</Ecma2WorkerSelfContained>
+		<Ecma2WorkerReadyToRun>true</Ecma2WorkerReadyToRun>
 	</PropertyGroup>
 
 	<ItemGroup>
