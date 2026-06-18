@@ -2,19 +2,15 @@
 
 	<PropertyGroup>
 		<OutputType>Library</OutputType>
-		<!-- net8.0-windows (not plain net8.0): the MA only ever runs inside the Windows MIM
-		     Synchronization Service host, and it writes to the Windows Event Log. Declaring the Windows
-		     platform makes that explicit and lets the Windows-only EventLog logger compile without a
-		     platform-compatibility (CA1416) warning, rather than suppressing a legitimate diagnostic. -->
 		<TargetFramework>net8.0-windows</TargetFramework>
-		<Company>Lithnet</Company>
+		<Company>Lithnet Pty Ltd</Company>
 		<SatelliteResourceLanguages>en</SatelliteResourceLanguages>
 		<Product>Okta Management Agent for Microsoft Identity Manager</Product>
 		<Authors>Lithnet</Authors>
 		<Description>Okta Management Agent for Microsoft Identity Manager</Description>
 		<Copyright>(c) 2026 Lithnet Pty Ltd</Copyright>
 		<LangVersion>12</LangVersion>
-		<Version>2.0.0</Version>
+		<Version>3.0.0</Version>
 		<IsPackable>false</IsPackable>
 
 		<!-- NU1701: the host MMS reference is a net4x assembly; on net8 it loads via type-forwarding
@@ -24,16 +20,6 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<!-- Host MMS assembly: the providers name real MMS types (Schema, SchemaType, AttributeChange,
-		     CSEntryChange, MACapabilities, WarningNoWatermarkException, etc.). This project is a Library; the
-		     framework build tooling (shipped in the Lithnet.Ecma2Framework package, auto-imported below) builds
-		     the out-of-process host exe (Ecma2Host.exe) as a separate build unit that ProjectReferences this MA
-		     and inherits this MMS reference (and the full NuGet closure below) through its transitive closure -
-		     Private=true so the facade DLL is carried into the host's output. Microsoft.MetadirectoryServicesEx.dll
-		     is Microsoft's assembly and is NOT shipped in the framework package: this consumer references it from
-		     its own MIM install. For local dev the HintPath points at the side-by-side framework repo's reference
-		     copy; a real customer points it at their MIM (Synchronization Service) install. The framework derives
-		     the host/shim build's MMS path from THIS resolved reference (it ships no copy and looks nothing up). -->
 		<Reference Include="Microsoft.MetadirectoryServicesEx">
 			<HintPath>..\..\..\ecma2-framework\src\Lithnet.Ecma2Framework\lib\Microsoft.MetadirectoryServicesEx.dll</HintPath>
 			<Private>true</Private>
@@ -41,19 +27,10 @@
 	</ItemGroup>
 
 	<ItemGroup>
-		<!-- The Lithnet.Ecma2Framework holding (meta) package - the package a management agent author installs.
-		     It pulls the Sdk (the provider/startup contracts + ported helpers, this MA's compile reference) and
-		     the Hosting runtime (the out-of-process worker, supplied transitively into the host build), and it
-		     auto-imports the build\ host/shim toolchain that produces Ecma2Host.exe + the net48 shim after this
-		     library builds (see the comment at the end of this file). The generated worker Main lives in the host
-		     exe, not in this library; this MA carries no source generator analyzer reference and no generated
-		     code. The Serialization wire assembly is NOT referenced directly: the password provider takes the
-		     host Microsoft.MetadirectoryServices.CSEntry, not a transport type, and Serialization.dll is supplied
-		     transitively (runtime only) through the Hosting dependency. -->
-		<PackageReference Include="Lithnet.Ecma2Framework" Version="3.0.0" />
-	</ItemGroup>
-
-	<ItemGroup>
+		<!-- Floats to the newest local prerelease (3.0.0-dev.<N>) produced by the side-by-side ecma2-framework
+		     repo's src\build\pack-local.ps1. A normal `dotnet build` re-resolves the float and picks up the latest
+		     local pack with no NuGet cache eviction. For a published/CI build pin this to the released 3.0.<rev>. -->
+		<PackageReference Include="Lithnet.Ecma2Framework" Version="3.0.0-dev.*" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.9" />
 		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
@@ -64,7 +41,6 @@
 		<PackageReference Include="System.Threading.Tasks.Dataflow" Version="10.0.9" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.300" PrivateAssets="all" />
 		<PackageReference Include="NLog.Extensions.Logging" Version="5.5.0" />
-
 		<PackageReference Include="Okta.Sdk" Version="5.6.2" />
 	</ItemGroup>
 
@@ -73,14 +49,4 @@
 			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 	</ItemGroup>
-
-	<!-- The Lithnet.Ecma2Framework package referenced above auto-imports its build\Lithnet.Ecma2Framework.props
-	     and build\Lithnet.Ecma2Framework.targets from the package's build\ folder - no explicit <Import> needed.
-	     Those targets do two things after this library builds: (1) build the out-of-process host exe
-	     (Ecma2Host.exe) as a separate build unit that ProjectReferences this MA and copies its full transitive
-	     closure (Okta.Sdk, Newtonsoft.Json, the framework Sdk/Hosting/Serialization, StreamJsonRpc, etc.) into a
-	     Host\ subfolder of this project's output, and (2) compile the net48 shim
-	     (Lithnet.Okta.ManagementAgent.Ecma2.dll) in an isolated obj/bin and copy it next to this project's
-	     output, then emit the Packaged-MA manifest when opted in via PackagedMa.props. -->
-
 </Project>
