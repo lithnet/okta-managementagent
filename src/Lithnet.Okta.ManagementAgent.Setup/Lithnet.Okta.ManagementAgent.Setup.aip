@@ -13,7 +13,7 @@
     <ROW Property="Manufacturer" Value="Lithnet"/>
     <ROW Property="ProductCode" Value="1033:{DEE56C84-83D2-4716-9712-1F681DD414D0} " Type="16"/>
     <ROW Property="ProductLanguage" Value="1033"/>
-    <ROW Property="ProductName" Value="Okta Management Agent"/>
+    <ROW Property="ProductName" Value="Lithnet Okta Management Agent"/>
     <ROW Property="ProductVersion" Value="3.0.0.0" Options="4"/>
     <ROW Property="SecureCustomProperties" Value="OLDPRODUCTS;AI_NEWERPRODUCTFOUND;FIMINSTALLDIR;SYNCVERSION;V2DETECTED"/>
     <ROW Property="UpgradeCode" Value="{1DFC1BE6-CEDC-4932-8048-F9013CD35C67}"/>
@@ -56,7 +56,6 @@
     <ROW Component="Lithnet.Ecma2Framework.Serialization.dll" ComponentId="{717D40AA-B9BD-4BAC-A231-6B5544ED300C}" Directory_="APPDIR" Attributes="256" KeyPath="Lithnet.Ecma2Framework.Serialization.dll"/>
     <ROW Component="Lithnet.Okta.ManagementAgent.Ecma2.PackagedMA.xml" ComponentId="{3E86FE58-FFA1-4E14-A452-ABCD601E6DFF}" Directory_="PACKAGEDMAS" Attributes="0" KeyPath="Lithnet.Okta.ManagementAgent.Ecma2.PackagedMA.xml"/>
     <ROW Component="Lithnet.Okta.ManagementAgent.Ecma2.dll" ComponentId="{AD200D66-C3F4-407D-9BDB-93F71892917B}" Directory_="FIMEXTENSIONS" Attributes="0" KeyPath="Lithnet.Okta.ManagementAgent.Ecma2.dll"/>
-    <ROW Component="OktaV2CompatShim" ComponentId="{C935C824-C241-44D4-9D46-690C72137167}" Directory_="FIMEXTENSIONS" Attributes="0" Condition="V2DETECTED" KeyPath="OktaV2CompatShim"/>
     <ROW Component="Lithnet.Okta.ManagementAgent.deps.json" ComponentId="{24F581D0-BCAB-4E4D-81F5-0CED18804DFA}" Directory_="APPDIR" Attributes="0" KeyPath="Lithnet.Okta.ManagementAgent.deps.json"/>
     <ROW Component="Lithnet.Okta.ManagementAgent.dll" ComponentId="{DD780D29-CC37-469D-B896-CA3D59D830F9}" Directory_="APPDIR" Attributes="256" KeyPath="Lithnet.Okta.ManagementAgent.dll"/>
     <ROW Component="Lithnet.Okta.ManagementAgent.pdb" ComponentId="{706BB3FF-FF08-4A73-8504-E80507D62E53}" Directory_="APPDIR" Attributes="0" KeyPath="Lithnet.Okta.ManagementAgent.pdb" Type="4"/>
@@ -104,6 +103,7 @@
     <ROW Component="Newtonsoft.Json.dll" ComponentId="{AC5E0EBB-276A-4806-BFB2-D5C8EDED4792}" Directory_="APPDIR" Attributes="256" KeyPath="Newtonsoft.Json.dll"/>
     <ROW Component="Okta.Sdk.Abstractions.dll" ComponentId="{8C82F197-6E93-4B4C-94FE-7909E8742914}" Directory_="APPDIR" Attributes="256" KeyPath="Okta.Sdk.Abstractions.dll"/>
     <ROW Component="Okta.Sdk.dll" ComponentId="{5AEE73A8-1E7B-4C75-BABA-08BDE0B4EBD4}" Directory_="APPDIR" Attributes="256" KeyPath="Okta.Sdk.dll"/>
+    <ROW Component="OktaV2CompatShim" ComponentId="{C935C824-C241-44D4-9D46-690C72137167}" Directory_="FIMEXTENSIONS" Attributes="0" Condition="V2DETECTED" KeyPath="OktaV2CompatShim"/>
     <ROW Component="PenImc_cor3.dll" ComponentId="{6CB7B964-7841-4DC6-9E24-C601741E27AF}" Directory_="APPDIR" Attributes="256" KeyPath="PenImc_cor3.dll"/>
     <ROW Component="PolyType.dll" ComponentId="{3A3FE3B3-6C1F-4DEF-AB20-86699F0169C6}" Directory_="APPDIR" Attributes="256" KeyPath="PolyType.dll"/>
     <ROW Component="PresentationCore.dll" ComponentId="{55335BEA-8CF6-4B95-B4AF-CC388D1AB61A}" Directory_="APPDIR" Attributes="256" KeyPath="PresentationCore.dll"/>
@@ -643,7 +643,7 @@
     <ROW File="YamlDotNet.dll" Component_="YamlDotNet.dll" FileName="YAMLDO~1.DLL|YamlDotNet.dll" Attributes="0" SourcePath="..\Lithnet.Okta.ManagementAgent\bin\Publish\YamlDotNet.dll" SelfReg="false"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.BootstrOptComponent">
-    <ROW BootstrOptKey="GlobalOptions" DownloadFolder="[AppDataFolder][|Manufacturer]\[|ProductName]\prerequisites" Options="2"/>
+    <ROW BootstrOptKey="GlobalOptions" DownloadFolder="[AppDataFolder]Lithnet\Okta Management Agent\prerequisites" Options="2"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.BootstrapperUISequenceComponent">
     <ROW Action="AI_DetectSoftware" Sequence="151"/>
@@ -724,7 +724,7 @@
     <ROW Action="AI_ResolveKnownFolders" Type="1" Source="aicustact.dll" Target="AI_ResolveKnownFolders"/>
     <ROW Action="AI_SHOW_LOG" Type="65" Source="aicustact.dll" Target="LaunchLogFile" WithoutSeq="true"/>
     <ROW Action="AI_STORE_LOCATION" Type="51" Source="ARPINSTALLLOCATION" Target="[APPDIR]"/>
-    <ROW Action="SET_APPDIR" Type="307" Source="APPDIR" Target="[ProgramFilesFolder][Manufacturer]\[ProductName]" MultiBuildTarget="DefaultBuild:[ProgramFiles64Folder][Manufacturer]\[ProductName]"/>
+    <ROW Action="SET_APPDIR" Type="307" Source="APPDIR" Target="[ProgramFiles64Folder]Lithnet\Okta Management Agent" MultiBuildTarget="DefaultBuild:[ProgramFiles64Folder]Lithnet\Okta Management Agent"/>
     <ROW Action="SET_SHORTCUTDIR" Type="307" Source="SHORTCUTDIR" Target="[ProgramMenuFolder][ProductName]"/>
     <ROW Action="SET_TARGETDIR_TO_APPDIR" Type="51" Source="TARGETDIR" Target="[APPDIR]"/>
   </COMPONENT>
@@ -1069,18 +1069,18 @@
   <COMPONENT cid="caphyon.advinst.msicomp.MsiRegsComponent">
     <ROW Registry="ECMA2" Root="2" Key="Software\Lithnet\ECMA2" Name="+" Component_="ECMA2"/>
     <ROW Registry="Lithnet.Okta.ManagementAgent.Ecma2" Root="2" Key="Software\Lithnet\ECMA2\Lithnet.Okta.ManagementAgent.Ecma2" Name="\"/>
-    <ROW Registry="Manufacturer" Root="-1" Key="Software\[Manufacturer]" Name="\"/>
+    <ROW Registry="Manufacturer" Root="-1" Key="Software\Lithnet" Name="\"/>
     <ROW Registry="Manufacturer_1" Root="2" Key="Software\Lithnet" Name="\"/>
-    <ROW Registry="Path" Root="-1" Key="Software\[Manufacturer]\[ProductName]" Name="Path" Value="[APPDIR]" Component_="ProductInformation"/>
-    <ROW Registry="ProductName" Root="-1" Key="Software\[Manufacturer]\[ProductName]" Name="\"/>
+    <ROW Registry="Path" Root="-1" Key="Software\Lithnet\Okta Management Agent" Name="Path" Value="[APPDIR]" Component_="ProductInformation"/>
+    <ROW Registry="ProductName" Root="-1" Key="Software\Lithnet\Okta Management Agent" Name="\"/>
     <ROW Registry="Software" Root="-1" Key="Software" Name="\"/>
     <ROW Registry="Software_1" Root="2" Key="Software" Name="\"/>
-    <ROW Registry="Version" Root="-1" Key="Software\[Manufacturer]\[ProductName]" Name="Version" Value="[ProductVersion]" Component_="ProductInformation"/>
+    <ROW Registry="Version" Root="-1" Key="Software\Lithnet\Okta Management Agent" Name="Version" Value="[ProductVersion]" Component_="ProductInformation"/>
     <ROW Registry="WorkerHost" Root="2" Key="Software\Lithnet\ECMA2\Lithnet.Okta.ManagementAgent.Ecma2" Name="WorkerPath" Value="[#Ecma2Host.exe]" Component_="WorkerHost"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiSignatureComponent">
-    <ROW Signature="binFolder" FileName="MIISER~1.EXE|miiserver.exe" MinVersion="4.1.3441.0"/>
     <ROW Signature="OktaV2Extension" FileName="Lithnet.Okta.ManagementAgent.dll"/>
+    <ROW Signature="binFolder" FileName="MIISER~1.EXE|miiserver.exe" MinVersion="4.1.3441.0"/>
   </COMPONENT>
   <COMPONENT cid="caphyon.advinst.msicomp.MsiThemeComponent">
     <ATTRIBUTE name="UsedTheme" value="classic"/>
