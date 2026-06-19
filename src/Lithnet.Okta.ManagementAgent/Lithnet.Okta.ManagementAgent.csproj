@@ -8,7 +8,7 @@
 		<Product>Okta Management Agent for Microsoft Identity Manager</Product>
 		<Authors>Lithnet</Authors>
 		<Description>Okta Management Agent for Microsoft Identity Manager</Description>
-		<Copyright>(c) 2026 Lithnet Pty Ltd</Copyright>
+		<Copyright>Copyright $([System.DateTime]::Now.Year) Lithnet Pty Ltd</Copyright>
 		<LangVersion>12</LangVersion>
 		<Version>3.0.0</Version>
 		<IsPackable>false</IsPackable>
@@ -36,7 +36,7 @@
 		<!-- Floats to the newest local prerelease (3.0.0-dev.<N>) produced by the side-by-side ecma2-framework
 		     repo's src\build\pack-local.ps1. A normal `dotnet build` re-resolves the float and picks up the latest
 		     local pack with no NuGet cache eviction. For a published/CI build pin this to the released 3.0.<rev>. -->
-		<PackageReference Include="Lithnet.Ecma2Framework" Version="3.0.0-dev.*" />
+		<PackageReference Include="Lithnet.Ecma2Framework" Version="3.0.4" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.9" />
 		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
