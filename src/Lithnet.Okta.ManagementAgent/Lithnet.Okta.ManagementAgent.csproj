@@ -26,17 +26,14 @@
 	</PropertyGroup>
 
 	<ItemGroup>
-		<Reference Include="Microsoft.MetadirectoryServicesEx">
-			<HintPath>..\..\..\ecma2-framework\src\Lithnet.Ecma2Framework.Sdk\lib\Microsoft.MetadirectoryServicesEx.dll</HintPath>
-			<Private>true</Private>
-		</Reference>
+		<PackageReference Include="Lithnet.MIM.MetadirectoryServicesEx" Version="4.3.1935" PrivateAssets="all" ExcludeAssets="runtime" />
 	</ItemGroup>
 
 	<ItemGroup>
 		<!-- Floats to the newest local prerelease (3.0.0-dev.<N>) produced by the side-by-side ecma2-framework
 		     repo's src\build\pack-local.ps1. A normal `dotnet build` re-resolves the float and picks up the latest
 		     local pack with no NuGet cache eviction. For a published/CI build pin this to the released 3.0.<rev>. -->
-		<PackageReference Include="Lithnet.Ecma2Framework" Version="3.0.4" />
+		<PackageReference Include="Lithnet.Ecma2Framework" Version="3.0.6" />
 		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
 		<PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.9" />
 		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />

@@ -86,9 +86,12 @@ stages:
     - task: DotNetCoreCLI@2
       displayName: Publish worker, shim and manifest
       inputs:
-        command: custom
-        custom: publish
-        arguments: 'src/Lithnet.Okta.ManagementAgent/Lithnet.Okta.ManagementAgent.csproj -c $(buildConfiguration) -p:PublishProfile=FolderProfile -p:Version=$(build.version)'
+        command: publish
+        publishWebProjects: false
+        projects: src/Lithnet.Okta.ManagementAgent/Lithnet.Okta.ManagementAgent.csproj
+        arguments: -c $(buildConfiguration) -p:PublishProfile=FolderProfile -p:Version=$(build.version) --output "$(workerPublishPath)"
+        zipAfterPublish: false
+        modifyOutputPath: false
 
     - task: PublishSymbols@2
       displayName: Publish symbols
