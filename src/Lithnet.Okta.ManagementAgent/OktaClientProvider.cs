@@ -12,12 +12,14 @@ namespace Lithnet.Okta.ManagementAgent
     {
         private readonly ILogger<OktaClientProvider> logger;
         private readonly ConnectivityOptions connectivityOptions;
+        private readonly OktaMAConfigSection maConfig;
         private OktaClient client;
 
-        public OktaClientProvider(ILogger<OktaClientProvider> clientProvider, IOptions<ConnectivityOptions> connectivityOptions)
+        public OktaClientProvider(ILogger<OktaClientProvider> clientProvider, IOptions<ConnectivityOptions> connectivityOptions, IOptions<OktaMAConfigSection> maConfig)
         {
             this.logger = clientProvider;
             this.connectivityOptions = connectivityOptions.Value;
+            this.maConfig = maConfig.Value;
         }
 
         public OktaClient GetClient()
@@ -26,15 +28,13 @@ namespace Lithnet.Okta.ManagementAgent
             {
                 ProxyConfiguration proxyConfig = null;
 
-                if (!string.IsNullOrWhiteSpace(OktaMAConfigSection.Configuration.ProxyUrl))
+                if (!string.IsNullOrWhiteSpace(this.maConfig.ProxyUrl))
                 {
-                    proxyConfig = new ProxyConfiguration() { Host = OktaMAConfigSection.Configuration.ProxyUrl };
+                    proxyConfig = new ProxyConfiguration() { Host = this.maConfig.ProxyUrl };
                     this.logger.LogInformation($"Using proxy host {proxyConfig.Host}");
                 }
 
                 this.logger.LogInformation($"Setting up connection to {this.connectivityOptions.TenantUrl}");
-
-                System.Net.ServicePointManager.DefaultConnectionLimit = OktaMAConfigSection.Configuration.ConnectionLimit;
 
                 NLog.Extensions.Logging.NLogLoggerProvider f = new NLog.Extensions.Logging.NLogLoggerProvider();
                 ILogger nlogger = f.CreateLogger("ext-logger");
@@ -50,7 +50,7 @@ namespace Lithnet.Okta.ManagementAgent
 
                 HttpClient httpClient;
 
-                if (OktaMAConfigSection.Configuration.HttpDebugEnabled)
+                if (this.maConfig.HttpDebugEnabled)
                 {
                     this.logger.LogWarning("WARNING: HTTPS Debugging enabled. Service certificate validation is disabled");
 

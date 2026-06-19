@@ -3,7 +3,6 @@ using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using Lithnet.Ecma2Framework;
-using Lithnet.MetadirectoryServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.MetadirectoryServices;
 using Okta.Sdk;

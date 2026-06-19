@@ -5,7 +5,7 @@ using Lithnet.Ecma2Framework;
 namespace Lithnet.Okta.ManagementAgent
 {
     [GlobalConfiguration]
-    internal class GlobalOptions
+    public class GlobalOptions
     {
         [LabelParameter("Group options")]
         [CheckboxParameter(ConfigParameterNames.IncludeBuiltInGroups)]

@@ -1,0 +1,15 @@
+<Project>
+  <PropertyGroup>
+    <!-- Generate the FIM Packaged MA manifest as part of the build. -->
+    <Ecma2GeneratePackagedMa>true</Ecma2GeneratePackagedMa>
+
+    <!-- The stable id of the real Okta MA's packaged-MA definition. This matches the id in the previously
+         shipped Lithnet.Okta.ManagementAgent.PackagedMA.xml so a re-import updates the existing MA rather
+         than creating a duplicate. -->
+    <Ecma2PackagedManagementAgentId>{B965F673-D98D-4A77-9708-3CD4F63AB4C8}</Ecma2PackagedManagementAgentId>
+    <Ecma2PackagedMaCompany>Lithnet</Ecma2PackagedMaCompany>
+    <Ecma2PackagedMaListName>Okta</Ecma2PackagedMaListName>
+
+    <Ecma2PackagedMaHelpText>Lithnet Okta Management Agent</Ecma2PackagedMaHelpText>
+  </PropertyGroup>
+</Project>
