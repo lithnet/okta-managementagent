@@ -5,7 +5,6 @@ using System.Text.Json;
 using System.Threading;
 using System.Threading.Tasks;
 using Lithnet.Ecma2Framework;
-using Lithnet.MetadirectoryServices;
 using Microsoft.Extensions.Logging;
 using Microsoft.Extensions.Options;
 using Microsoft.MetadirectoryServices;
@@ -19,15 +18,17 @@ namespace Lithnet.Okta.ManagementAgent
         private readonly IOktaClient client;
         private readonly ILogger<GroupImportProvider> logger;
         private readonly GlobalOptions globalOptions;
+        private readonly OktaMAConfigSection maConfig;
         private long groupUpdateHighestTicks = 0;
         private long groupMemberUpdateHighestTicks = 0;
         private GroupWatermark inboundWatermark;
 
-        public GroupImportProvider(OktaClientProvider oktaClientProvider, IOptions<GlobalOptions> globalOptions, ILogger<GroupImportProvider> logger) : base(logger)
+        public GroupImportProvider(OktaClientProvider oktaClientProvider, IOptions<GlobalOptions> globalOptions, IOptions<OktaMAConfigSection> maConfig, ILogger<GroupImportProvider> logger) : base(logger)
         {
             this.client = oktaClientProvider.GetClient();
             this.logger = logger;
             this.globalOptions = globalOptions.Value;
+            this.maConfig = maConfig.Value;
         }
 
 
@@ -144,7 +145,7 @@ namespace Lithnet.Okta.ManagementAgent
                 filter = $"({filter}) AND (lastUpdated gt \"{this.inboundWatermark.LastUpdated.ToSmartString()}Z\" or lastMembershipUpdated gt \"{this.inboundWatermark.LastMembershipUpdated.ToSmartString()}Z\")";
             }
 
-            return this.client.Groups.ListGroups(null, filter, null, OktaMAConfigSection.Configuration.GroupListPageSize, null, null);
+            return this.client.Groups.ListGroups(null, filter, null, this.maConfig.GroupListPageSize, null, null);
         }
 
         protected override Task<ObjectModificationType> GetObjectModificationTypeAsync(IGroup item)

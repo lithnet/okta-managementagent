@@ -254,18 +254,5 @@ namespace Lithnet.Okta.ManagementAgent
                     return AttributeOperation.ImportOnly;
             }
         }
-
-        private void DumpDictionary(IDictionary<string, object> d1)
-        {
-            foreach (KeyValuePair<string, object> item in d1)
-            {
-                this.logger.LogInformation($"{item.Key}: {item.Value}");
-
-                if (item.Value is IDictionary<string, object> d2)
-                {
-                    this.DumpDictionary(d2);
-                }
-            }
-        }
     }
 }

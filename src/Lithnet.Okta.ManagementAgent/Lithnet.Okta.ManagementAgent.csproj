@@ -1,67 +1,54 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
 	<PropertyGroup>
-		<RegisterForComInterop>false</RegisterForComInterop>
 		<OutputType>Library</OutputType>
-		<Company>Lithnet</Company>
+		<TargetFramework>net10.0-windows</TargetFramework>
+		<Company>Lithnet Pty Ltd</Company>
 		<SatelliteResourceLanguages>en</SatelliteResourceLanguages>
-		<TargetFramework>net48</TargetFramework>
-		<RuntimeIdentifiers>win-x64</RuntimeIdentifiers>
 		<Product>Okta Management Agent for Microsoft Identity Manager</Product>
 		<Authors>Lithnet</Authors>
 		<Description>Okta Management Agent for Microsoft Identity Manager</Description>
-		<Copyright>(c) 2026 Lithnet Pty Ltd</Copyright>
-		<Platforms>x64</Platforms>
+		<Copyright>Copyright $([System.DateTime]::Now.Year) Lithnet Pty Ltd</Copyright>
 		<LangVersion>12</LangVersion>
-		<Version>2.0.0</Version>
-		<Deterministic>false</Deterministic>
-		<GenerateResourceUsePreserializedResources>true</GenerateResourceUsePreserializedResources>
-		<EnableDefaultContentItems>false</EnableDefaultContentItems>
-		<AutoGenerateBindingRedirects>true</AutoGenerateBindingRedirects>
-		<EmitCompilerGeneratedFiles>true</EmitCompilerGeneratedFiles>
+		<Version>3.0.0</Version>
+		<IsPackable>false</IsPackable>
+
+		<!-- NU1701: the host MMS reference is a net4x assembly; on net8 it loads via type-forwarding
+		     facades (proven dependable). -->
+		<NoWarn>$(NoWarn);NU1701</NoWarn>
+
+		<!-- Publish the out-of-process worker SELF-CONTAINED + ReadyToRun: `dotnet publish` of this consumer
+		     bundles the .NET runtime into the worker output (no machine .NET 10 install required on the MIM
+		     server) and crossgens it to R2R for faster cold start. `dotnet build` is unaffected - it still
+		     produces the fast, framework-dependent worker for the inner dev loop. -->
+		<Ecma2WorkerSelfContained>true</Ecma2WorkerSelfContained>
+		<Ecma2WorkerReadyToRun>true</Ecma2WorkerReadyToRun>
 	</PropertyGroup>
 
 	<ItemGroup>
-		<PackageReference Include="Costura.Fody" Version="5.7.0" PrivateAssets="all" />
-		<PackageReference Include="Lithnet.Ecma2Framework" Version="2.0.49" />
-		<PackageReference Include="Microsoft.Bcl.AsyncInterfaces" Version="10.0.9" />
-		<PackageReference Include="Lithnet.MetadirectoryServices" version="2.0.5" />
+		<PackageReference Include="Lithnet.MIM.MetadirectoryServicesEx" Version="4.3.1935" PrivateAssets="all" ExcludeAssets="runtime" />
+	</ItemGroup>
+
+	<ItemGroup>
+		<!-- Floats to the newest local prerelease (3.0.0-dev.<N>) produced by the side-by-side ecma2-framework
+		     repo's src\build\pack-local.ps1. A normal `dotnet build` re-resolves the float and picks up the latest
+		     local pack with no NuGet cache eviction. For a published/CI build pin this to the released 3.0.<rev>. -->
+		<PackageReference Include="Lithnet.Ecma2Framework" Version="3.0.8" />
+		<PackageReference Include="Microsoft.Extensions.DependencyInjection" Version="10.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Logging" Version="10.0.9" />
+		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
 		<PackageReference Include="Microsoft.IdentityModel.JsonWebTokens" Version="8.19.1" />
 		<PackageReference Include="Newtonsoft.Json" Version="13.0.4" />
 		<PackageReference Include="System.IdentityModel.Tokens.Jwt" Version="8.19.1" />
 		<PackageReference Include="System.Interactive.Async" Version="7.0.1" />
-		<PackageReference Include="System.Net.Http" Version="4.3.4" />
-		<PackageReference Include="System.Text.RegularExpressions" Version="4.3.1" />
-		<PackageReference Include="System.Threading.Tasks.Dataflow" Version="10.0.9" />
 		<PackageReference Include="Microsoft.SourceLink.GitHub" Version="10.0.300" PrivateAssets="all" />
-		<PackageReference Include="Microsoft.Extensions.Options.ConfigurationExtensions" Version="10.0.9" />
 		<PackageReference Include="NLog.Extensions.Logging" Version="5.5.0" />
-		
 		<PackageReference Include="Okta.Sdk" Version="5.6.2" />
 	</ItemGroup>
 
 	<ItemGroup>
-		<Reference Include="Microsoft.MetadirectoryServicesEx">
-			<HintPath>lib\Microsoft.MetadirectoryServicesEx.dll</HintPath>
-			<Private>False</Private>
-		</Reference>
-		<Reference Include="System.ComponentModel.DataAnnotations" />
-
-	</ItemGroup>
-
-	<ItemGroup>
-		<None Update="Lithnet.Okta.ManagementAgent.PackagedMA.xml">
-			<CopyToOutputDirectory>Always</CopyToOutputDirectory>
-		</None>
-		<None Update="MAPackageInformation.xml">
-			<CopyToOutputDirectory>Never</CopyToOutputDirectory>
+		<None Update="appsettings.json">
+			<CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
 		</None>
 	</ItemGroup>
-
-	<!--<PropertyGroup>
-		<PreBuildEvent>
-			del $(ProjectDir)$(ProjectName).PackagedMA.xml /f
-			"%ProgramFiles%\Microsoft Forefront Identity Manager\2010\Synchronization Service\Bin\mapackager.exe" /e:$(ProjectDir)ExportedMA.xml /c:$(ProjectDir)MAPackageInformation.xml /o:$(ProjectDir)$(ProjectName).PackagedMA.xml"
-		</PreBuildEvent>
-	</PropertyGroup>-->
 </Project>
